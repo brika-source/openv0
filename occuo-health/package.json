@@ -1,0 +1,14 @@
+{
+  "name": "occuo-health-website",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Occuo Health — occupational health services, Egypt. Zero-dependency static site.",
+  "type": "module",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node build.mjs --serve",
+    "images": "node tools/make-images.mjs",
+    "check": "node tools/check.mjs"
+  }
+}
