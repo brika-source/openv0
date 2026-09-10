@@ -1,0 +1,16 @@
+# Runtime data — never committed.
+storage/db/*
+!storage/db/.gitignore
+storage/uploads/*
+!storage/uploads/.gitignore
+storage/logs/*
+!storage/logs/.gitignore
+
+# Local environment overrides
+.env
+
+# Editor / OS noise
+.idea/
+.vscode/
+*.swp
+.DS_Store

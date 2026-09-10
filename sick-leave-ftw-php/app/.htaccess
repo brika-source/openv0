@@ -1,0 +1,2 @@
+# This directory must never be reachable over HTTP.
+Require all denied
