@@ -326,8 +326,12 @@ export function page({ title, description, path, body, jsonLd = '', bodyClass = 
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Inter:wght@400;500;600&display=swap">
 <link rel="stylesheet" href="${url('/assets/css/main.css')}">
 <script>
-/* Set the theme before first paint so there is no light-to-dark flash. */
-(function(){try{var t=localStorage.getItem('occuo-theme');var d=window.matchMedia('(prefers-color-scheme: dark)').matches;
+/* Runs before first paint: sets the theme (no light-to-dark flash) and marks
+   the document as scripted, which is what allows the scroll-reveal CSS to
+   hide anything at all. Without JS the .js class never lands and every
+   section renders immediately. */
+(function(){document.documentElement.classList.add('js');
+try{var t=localStorage.getItem('occuo-theme');var d=window.matchMedia('(prefers-color-scheme: dark)').matches;
 document.documentElement.dataset.theme=t||(d?'dark':'light');}catch(e){}})();
 </script>
 </head>
