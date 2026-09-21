@@ -11,6 +11,7 @@
         <dt class="col-sm-2">Serial</dt><dd class="col-sm-10">@Model.Serial</dd>
         <dt class="col-sm-2">Action</dt><dd class="col-sm-10">@Model.Name</dd>
         <dt class="col-sm-2">Project</dt><dd class="col-sm-10">@Model.WorkItem?.Project?.Name &middot; @Model.WorkItem?.Name</dd>
+        <dt class="col-sm-2">Owners</dt><dd class="col-sm-10"><partial name="_OwnerHandles" model="Model" /></dd>
         <dt class="col-sm-2">Status</dt><dd class="col-sm-10">@Model.Status.DisplayName()</dd>
     </dl>
     <form asp-action="Delete" asp-route-id="@Model.Id" method="post" class="d-flex gap-2">

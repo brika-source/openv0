@@ -144,7 +144,7 @@
                                 @action.Name
                                 <div class="text-muted small">@action.WorkItem?.Project?.Name &middot; @action.WorkItem?.Name</div>
                             </td>
-                            <td>@action.Owner</td>
+                            <td><partial name="_OwnerHandles" model="action" /></td>
                             <td>@(action.ReviewDate?.ToString("dd MMM") ?? "—")</td>
                             <td><partial name="_StatusBadge" model="action.Status" /></td>
                         </tr>
@@ -165,7 +165,7 @@
                     @foreach (var owner in Model.TopOwners)
                     {
                         <tr>
-                            <td><a asp-controller="Actions" asp-action="Index" asp-route-owner="@owner.Owner">@owner.Owner</a></td>
+                            <td><a class="handle" asp-controller="Actions" asp-action="Index" asp-route-Owner="@owner.Owner">@owner.Owner</a></td>
                             <td class="text-end">@owner.Open</td>
                             <td class="text-end text-success">@owner.Complete</td>
                         </tr>

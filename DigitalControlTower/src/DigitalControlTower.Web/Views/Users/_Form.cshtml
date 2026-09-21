@@ -1,0 +1,22 @@
+@model AppUser
+
+<div class="mb-3">
+    <label asp-for="Email" class="form-label"></label>
+    <input asp-for="Email" class="form-control" type="email" placeholder="brika.wm@pg.com" />
+    <span asp-validation-for="Email" class="text-danger small"></span>
+</div>
+<div class="mb-3">
+    <label asp-for="Handle" class="form-label"></label>
+    <input asp-for="Handle" class="form-control" placeholder="brika.wm" />
+    <div class="form-text">The mail alias used everywhere on screen. Leave blank to take it from the email address.</div>
+    <span asp-validation-for="Handle" class="text-danger small"></span>
+</div>
+<div class="mb-3">
+    <label asp-for="Name" class="form-label"></label>
+    <input asp-for="Name" class="form-control" placeholder="Walaa Brika" />
+    <span asp-validation-for="Name" class="text-danger small"></span>
+</div>
+<div class="form-check mb-3">
+    <input asp-for="IsProvisional" class="form-check-input" />
+    <label asp-for="IsProvisional" class="form-check-label">Provisional — the address still needs confirming</label>
+</div>

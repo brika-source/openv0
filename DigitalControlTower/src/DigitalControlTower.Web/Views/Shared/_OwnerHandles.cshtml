@@ -1,0 +1,13 @@
+@model ActionItem
+@* Owners are always shown by handle (the mail alias), never by free-text name. *@
+@if (Model.Owners.Count == 0)
+{
+    <span class="text-muted">—</span>
+}
+else
+{
+    foreach (var owner in Model.Owners.Select(o => o.User).Where(u => u is not null).OrderBy(u => u!.Handle))
+    {
+        <a class="handle" asp-controller="Actions" asp-action="Index" asp-route-Owner="@owner!.Handle" title="@owner.Name">@owner.Handle</a>
+    }
+}

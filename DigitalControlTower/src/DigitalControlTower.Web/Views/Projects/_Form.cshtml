@@ -37,8 +37,10 @@
         </select>
     </div>
     <div class="col-md-3">
-        <label asp-for="Pm" class="form-label"></label>
-        <input asp-for="Pm" class="form-control" />
+        <label asp-for="PmId" class="form-label">Project manager</label>
+        <select asp-for="PmId" class="form-select" asp-items="ViewBag.Pms as Microsoft.AspNetCore.Mvc.Rendering.SelectList">
+            <option value="">— not set —</option>
+        </select>
     </div>
 
     <div class="col-md-3">

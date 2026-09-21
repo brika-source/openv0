@@ -1,0 +1,10 @@
+@model AppUser
+@* One person, shown by handle with the full name on hover. *@
+@if (Model is null)
+{
+    <span class="text-muted">—</span>
+}
+else
+{
+    <span class="handle" title="@Model.Name">@Model.Handle</span>
+}

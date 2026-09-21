@@ -13,6 +13,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<WorkItem> WorkItems => Set<WorkItem>();
     public DbSet<ActionItem> Actions => Set<ActionItem>();
+    public DbSet<ActionOwner> ActionOwners => Set<ActionOwner>();
     public DbSet<ActionWeek> ActionWeeks => Set<ActionWeek>();
     public DbSet<ActionTag> ActionTags => Set<ActionTag>();
     public DbSet<ActionHistory> ActionHistories => Set<ActionHistory>();
@@ -23,7 +24,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     /// <summary>Action fields whose changes are written to the audit trail.</summary>
     private static readonly string[] AuditedActionFields =
     [
-        nameof(ActionItem.Status), nameof(ActionItem.Owner), nameof(ActionItem.Priority),
+        nameof(ActionItem.Status), nameof(ActionItem.Priority),
         nameof(ActionItem.Quarter), nameof(ActionItem.Name), nameof(ActionItem.Target),
         nameof(ActionItem.ReviewDate), nameof(ActionItem.CompletionDate), nameof(ActionItem.NextStep)
     ];
@@ -41,6 +42,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         b.Entity<Project>().Property(p => p.Scope).HasConversion<string>().HasMaxLength(32);
         b.Entity<ActionWeek>().Property(w => w.Mark).HasConversion<string>().HasMaxLength(8);
 
+        b.Entity<AppUser>().HasIndex(u => u.Handle).IsUnique();
         b.Entity<AppUser>().HasIndex(u => u.Email).IsUnique();
 
         b.Entity<Pillar>().HasIndex(p => p.Name).IsUnique();
@@ -49,9 +51,16 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .HasOne(p => p.Pillar).WithMany(p => p.Projects)
             .HasForeignKey(p => p.PillarId).OnDelete(DeleteBehavior.Cascade);
 
+        // A project points at two people (digital owner and PM). SQL Server refuses more
+        // than one cascading or SET NULL path between the same pair of tables, so both are
+        // restricted and UsersController clears them before deleting someone.
         b.Entity<Project>()
             .HasOne(p => p.DigitalOwner).WithMany(u => u.OwnedProjects)
-            .HasForeignKey(p => p.DigitalOwnerId).OnDelete(DeleteBehavior.SetNull);
+            .HasForeignKey(p => p.DigitalOwnerId).OnDelete(DeleteBehavior.Restrict);
+
+        b.Entity<Project>()
+            .HasOne(p => p.Pm).WithMany(u => u.ManagedProjects)
+            .HasForeignKey(p => p.PmId).OnDelete(DeleteBehavior.Restrict);
 
         b.Entity<Project>().HasIndex(p => p.PillarId);
         b.Entity<Project>().HasIndex(p => p.Status);
@@ -67,7 +76,15 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         b.Entity<ActionItem>().HasIndex(a => a.Serial).IsUnique();
         b.Entity<ActionItem>().HasIndex(a => a.WorkItemId);
         b.Entity<ActionItem>().HasIndex(a => a.Status);
-        b.Entity<ActionItem>().HasIndex(a => a.Owner);
+
+        b.Entity<ActionOwner>()
+            .HasOne(o => o.ActionItem).WithMany(a => a.Owners)
+            .HasForeignKey(o => o.ActionItemId).OnDelete(DeleteBehavior.Cascade);
+        b.Entity<ActionOwner>()
+            .HasOne(o => o.User).WithMany(u => u.ActionOwnerships)
+            .HasForeignKey(o => o.UserId).OnDelete(DeleteBehavior.Restrict);
+        b.Entity<ActionOwner>().HasIndex(o => new { o.ActionItemId, o.UserId }).IsUnique();
+        b.Entity<ActionOwner>().HasIndex(o => o.UserId);
 
         b.Entity<ActionWeek>()
             .HasOne(w => w.ActionItem).WithMany(a => a.Weeks)
@@ -115,7 +132,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     private void StampAndAudit()
     {
         var now = DateTime.UtcNow;
-        var actor = currentUser?.Name ?? "System";
+        var actor = currentUser?.Handle ?? "system";
 
         // Timestamps are only filled in when the caller left them unset, so an import
         // of an existing export keeps the original CreatedAt/UpdatedAt values.

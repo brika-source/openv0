@@ -23,9 +23,6 @@ public class ActionItem
     [Required, StringLength(400), Display(Name = "Action")]
     public string Name { get; set; } = string.Empty;
 
-    [StringLength(128), Display(Name = "Owner")]
-    public string? Owner { get; set; }
-
     [Display(Name = "Status")]
     public ActionStatus Status { get; set; } = ActionStatus.NotStarted;
 
@@ -68,6 +65,9 @@ public class ActionItem
     [Display(Name = "Updated")]
     public DateTime UpdatedAt { get; set; }
 
+    /// <summary>The people who own this action, referenced by handle on screen.</summary>
+    public ICollection<ActionOwner> Owners { get; set; } = new List<ActionOwner>();
+
     public ICollection<ActionWeek> Weeks { get; set; } = new List<ActionWeek>();
     public ICollection<ActionTag> Tags { get; set; } = new List<ActionTag>();
     public ICollection<ActionHistory> History { get; set; } = new List<ActionHistory>();
@@ -75,4 +75,11 @@ public class ActionItem
 
     [NotMapped]
     public bool IsOpen => Status is not (ActionStatus.Complete or ActionStatus.Cancelled);
+
+    /// <summary>Owner handles, comma separated: "ismail.he, amer.is". Requires the owners to be loaded.</summary>
+    [NotMapped]
+    public string OwnerHandles => string.Join(", ", Owners
+        .Select(o => o.User?.Handle)
+        .Where(h => !string.IsNullOrWhiteSpace(h))
+        .OrderBy(h => h));
 }

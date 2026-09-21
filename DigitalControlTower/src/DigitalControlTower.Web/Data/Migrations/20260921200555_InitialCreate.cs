@@ -41,8 +41,10 @@ namespace DigitalControlTower.Web.Data.Migrations
                 columns: table => new
                 {
                     Id = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
+                    Handle = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
                     Name = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
-                    Email = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false)
+                    Email = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
+                    IsProvisional = table.Column<bool>(type: "bit", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -71,7 +73,7 @@ namespace DigitalControlTower.Web.Data.Migrations
                     Scope = table.Column<string>(type: "nvarchar(32)", maxLength: 32, nullable: true),
                     DeptOwner = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: true),
                     DigitalOwnerId = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: true),
-                    Pm = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: true),
+                    PmId = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: true),
                     Status = table.Column<string>(type: "nvarchar(32)", maxLength: 32, nullable: false),
                     StartDate = table.Column<DateOnly>(type: "date", nullable: true),
                     DueDate = table.Column<DateOnly>(type: "date", nullable: true),
@@ -99,7 +101,13 @@ namespace DigitalControlTower.Web.Data.Migrations
                         column: x => x.DigitalOwnerId,
                         principalTable: "Users",
                         principalColumn: "Id",
-                        onDelete: ReferentialAction.SetNull);
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Projects_Users_PmId",
+                        column: x => x.PmId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -131,7 +139,6 @@ namespace DigitalControlTower.Web.Data.Migrations
                     WorkItemId = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
                     Serial = table.Column<string>(type: "nvarchar(32)", maxLength: 32, nullable: false),
                     Name = table.Column<string>(type: "nvarchar(400)", maxLength: 400, nullable: false),
-                    Owner = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: true),
                     Status = table.Column<string>(type: "nvarchar(32)", maxLength: 32, nullable: false),
                     Priority = table.Column<string>(type: "nvarchar(32)", maxLength: 32, nullable: false),
                     Quarter = table.Column<string>(type: "nvarchar(32)", maxLength: 32, nullable: false),
@@ -179,6 +186,32 @@ namespace DigitalControlTower.Web.Data.Migrations
                         principalTable: "Actions",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "ActionOwners",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    ActionItemId = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
+                    UserId = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ActionOwners", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ActionOwners_Actions_ActionItemId",
+                        column: x => x.ActionItemId,
+                        principalTable: "Actions",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_ActionOwners_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateTable(
@@ -257,9 +290,15 @@ namespace DigitalControlTower.Web.Data.Migrations
                 columns: new[] { "ActionItemId", "At" });
 
             migrationBuilder.CreateIndex(
-                name: "IX_Actions_Owner",
-                table: "Actions",
-                column: "Owner");
+                name: "IX_ActionOwners_ActionItemId_UserId",
+                table: "ActionOwners",
+                columns: new[] { "ActionItemId", "UserId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ActionOwners_UserId",
+                table: "ActionOwners",
+                column: "UserId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Actions_Serial",
@@ -316,6 +355,11 @@ namespace DigitalControlTower.Web.Data.Migrations
                 column: "PillarId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Projects_PmId",
+                table: "Projects",
+                column: "PmId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Projects_Status",
                 table: "Projects",
                 column: "Status");
@@ -324,6 +368,12 @@ namespace DigitalControlTower.Web.Data.Migrations
                 name: "IX_Users_Email",
                 table: "Users",
                 column: "Email",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Users_Handle",
+                table: "Users",
+                column: "Handle",
                 unique: true);
 
             migrationBuilder.CreateIndex(
@@ -337,6 +387,9 @@ namespace DigitalControlTower.Web.Data.Migrations
         {
             migrationBuilder.DropTable(
                 name: "ActionHistories");
+
+            migrationBuilder.DropTable(
+                name: "ActionOwners");
 
             migrationBuilder.DropTable(
                 name: "ActionTags");

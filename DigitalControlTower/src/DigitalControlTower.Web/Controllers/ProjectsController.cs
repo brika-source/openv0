@@ -11,7 +11,7 @@ public class ProjectsController(ApplicationDbContext db) : Controller
 {
     private const string EditableFields =
         nameof(Project.PillarId) + "," + nameof(Project.Name) + "," + nameof(Project.Scope) + "," +
-        nameof(Project.DeptOwner) + "," + nameof(Project.DigitalOwnerId) + "," + nameof(Project.Pm) + "," +
+        nameof(Project.DeptOwner) + "," + nameof(Project.DigitalOwnerId) + "," + nameof(Project.PmId) + "," +
         nameof(Project.Status) + "," + nameof(Project.StartDate) + "," + nameof(Project.DueDate) + "," +
         nameof(Project.BaselineDate) + "," + nameof(Project.ImplementationDate) + "," +
         nameof(Project.ActualCompletionDate) + "," + nameof(Project.CostAvoidance) + "," +
@@ -23,6 +23,7 @@ public class ProjectsController(ApplicationDbContext db) : Controller
         var query = db.Projects
             .Include(p => p.Pillar)
             .Include(p => p.DigitalOwner)
+            .Include(p => p.Pm)
             .AsNoTracking()
             .AsQueryable();
 
@@ -31,7 +32,10 @@ public class ProjectsController(ApplicationDbContext db) : Controller
         if (!string.IsNullOrWhiteSpace(search))
         {
             var term = search.Trim();
-            query = query.Where(p => p.Name.Contains(term) || (p.Pm != null && p.Pm.Contains(term)));
+            query = query.Where(p =>
+                p.Name.Contains(term) ||
+                (p.Pm != null && (p.Pm.Handle.Contains(term) || p.Pm.Name.Contains(term))) ||
+                (p.DigitalOwner != null && p.DigitalOwner.Handle.Contains(term)));
         }
 
         ViewBag.Pillars = new SelectList(
@@ -60,8 +64,10 @@ public class ProjectsController(ApplicationDbContext db) : Controller
         var project = await db.Projects
             .Include(p => p.Pillar)
             .Include(p => p.DigitalOwner)
+            .Include(p => p.Pm)
             .Include(p => p.Items.OrderBy(i => i.SortOrder))
                 .ThenInclude(i => i.Actions.OrderBy(a => a.Serial))
+                    .ThenInclude(a => a.Owners).ThenInclude(o => o.User)
             .Include(p => p.Items)
                 .ThenInclude(i => i.Comments)
             .AsNoTracking()
@@ -81,7 +87,7 @@ public class ProjectsController(ApplicationDbContext db) : Controller
 
     public async Task<IActionResult> Create(string? pillarId, CancellationToken ct)
     {
-        await PopulateListsAsync(pillarId, null, ct);
+        await PopulateListsAsync(pillarId, null, null, ct);
         return View(new Project { PillarId = pillarId ?? string.Empty });
     }
 
@@ -94,10 +100,12 @@ public class ProjectsController(ApplicationDbContext db) : Controller
 
         if (!ModelState.IsValid)
         {
-            await PopulateListsAsync(project.PillarId, project.DigitalOwnerId, ct);
+            await PopulateListsAsync(project.PillarId, project.DigitalOwnerId, project.PmId, ct);
             return View(project);
         }
 
+        project.DigitalOwnerId = string.IsNullOrWhiteSpace(project.DigitalOwnerId) ? null : project.DigitalOwnerId;
+        project.PmId = string.IsNullOrWhiteSpace(project.PmId) ? null : project.PmId;
         project.Id = $"project-{Guid.NewGuid():N}"[..20];
         db.Projects.Add(project);
         await db.SaveChangesAsync(ct);
@@ -111,7 +119,7 @@ public class ProjectsController(ApplicationDbContext db) : Controller
         var project = await db.Projects.FirstOrDefaultAsync(p => p.Id == id, ct);
         if (project is null) return NotFound();
 
-        await PopulateListsAsync(project.PillarId, project.DigitalOwnerId, ct);
+        await PopulateListsAsync(project.PillarId, project.DigitalOwnerId, project.PmId, ct);
         return View(project);
     }
 
@@ -127,7 +135,7 @@ public class ProjectsController(ApplicationDbContext db) : Controller
 
         if (!ModelState.IsValid)
         {
-            await PopulateListsAsync(input.PillarId, input.DigitalOwnerId, ct);
+            await PopulateListsAsync(input.PillarId, input.DigitalOwnerId, input.PmId, ct);
             input.Id = id;
             return View(input);
         }
@@ -137,7 +145,7 @@ public class ProjectsController(ApplicationDbContext db) : Controller
         project.Scope = input.Scope;
         project.DeptOwner = input.DeptOwner;
         project.DigitalOwnerId = string.IsNullOrWhiteSpace(input.DigitalOwnerId) ? null : input.DigitalOwnerId;
-        project.Pm = input.Pm;
+        project.PmId = string.IsNullOrWhiteSpace(input.PmId) ? null : input.PmId;
         project.Status = input.Status;
         project.StartDate = input.StartDate;
         project.DueDate = input.DueDate;
@@ -183,14 +191,19 @@ public class ProjectsController(ApplicationDbContext db) : Controller
         return RedirectToAction(nameof(Index));
     }
 
-    private async Task PopulateListsAsync(string? pillarId, string? ownerId, CancellationToken ct)
+    private async Task PopulateListsAsync(string? pillarId, string? ownerId, string? pmId, CancellationToken ct)
     {
         ViewBag.Pillars = new SelectList(
             await db.Pillars.AsNoTracking().OrderBy(p => p.SortOrder).ToListAsync(ct),
             nameof(Pillar.Id), nameof(Pillar.Name), pillarId);
 
-        ViewBag.Owners = new SelectList(
-            await db.Users.AsNoTracking().OrderBy(u => u.Name).ToListAsync(ct),
-            nameof(AppUser.Id), nameof(AppUser.Name), ownerId);
+        // People are picked by handle, with the full name alongside for recognition.
+        var users = await db.Users.AsNoTracking()
+            .OrderBy(u => u.Handle)
+            .Select(u => new { u.Id, Label = u.Handle + " \u2014 " + u.Name })
+            .ToListAsync(ct);
+
+        ViewBag.Owners = new SelectList(users, "Id", "Label", ownerId);
+        ViewBag.Pms = new SelectList(users, "Id", "Label", pmId);
     }
 }

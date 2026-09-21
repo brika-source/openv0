@@ -36,14 +36,14 @@ public class DashboardController(ApplicationDbContext db) : Controller
 
         // Grouped aggregates are projected to an anonymous type first: EF cannot
         // translate a projection straight into a record's positional constructor.
-        var ownerLoads = await db.Actions
-            .Where(a => a.Owner != null && a.Owner != "")
-            .GroupBy(a => a.Owner!)
+        var ownerLoads = await db.ActionOwners
+            .GroupBy(o => o.User!.Handle)
             .Select(g => new
             {
                 Owner = g.Key,
-                Open = g.Count(a => a.Status != ActionStatus.Complete && a.Status != ActionStatus.Cancelled),
-                Complete = g.Count(a => a.Status == ActionStatus.Complete)
+                Open = g.Count(o => o.ActionItem!.Status != ActionStatus.Complete
+                                    && o.ActionItem!.Status != ActionStatus.Cancelled),
+                Complete = g.Count(o => o.ActionItem!.Status == ActionStatus.Complete)
             })
             .OrderByDescending(o => o.Open)
             .Take(8)
@@ -54,6 +54,7 @@ public class DashboardController(ApplicationDbContext db) : Controller
             .ToList();
 
         var attention = await db.Actions
+            .Include(a => a.Owners).ThenInclude(o => o.User)
             .Include(a => a.WorkItem)!.ThenInclude(i => i!.Project)!.ThenInclude(p => p!.Pillar)
             .Where(a => a.Status != ActionStatus.Complete && a.Status != ActionStatus.Cancelled
                         && (a.Status == ActionStatus.AtRisk

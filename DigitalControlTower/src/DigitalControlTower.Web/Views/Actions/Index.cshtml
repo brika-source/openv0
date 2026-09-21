@@ -12,7 +12,7 @@
     <div class="row g-2 align-items-end">
         <div class="col-md-3">
             <label class="form-label small mb-1">Search</label>
-            <input class="form-control form-control-sm" name="Search" value="@Model.Search" placeholder="serial, action, owner, notes" />
+            <input class="form-control form-control-sm" name="Search" value="@Model.Search" placeholder="serial, action, handle, notes" />
         </div>
         <div class="col-md-2">
             <label class="form-label small mb-1">Pillar</label>
@@ -29,7 +29,7 @@
         <div class="col-md-2">
             <label class="form-label small mb-1">Owner</label>
             <select class="form-select form-select-sm" name="Owner" asp-items="Model.Owners">
-                <option value="">All owners</option>
+                <option value="">All handles</option>
             </select>
         </div>
         <div class="col-md-1">
@@ -77,7 +77,7 @@
                         @action.WorkItem?.Project?.Name
                         <div>@action.WorkItem?.Name</div>
                     </td>
-                    <td class="text-nowrap">@action.Owner</td>
+                    <td class="text-nowrap"><partial name="_OwnerHandles" model="action" /></td>
                     <td>@(action.Quarter == Quarter.None ? "" : action.Quarter.DisplayName())</td>
                     <td><span class="badge @action.Priority.BadgeClass()">@action.Priority.DisplayName()</span></td>
                     <td class="text-nowrap">@(action.ReviewDate?.ToString("dd MMM yy") ?? "—")</td>

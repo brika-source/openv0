@@ -13,6 +13,7 @@ public class WeekGridController(ApplicationDbContext db) : Controller
     public async Task<IActionResult> Index(string? pillarId, string? projectId, bool openOnly, CancellationToken ct)
     {
         var query = db.Actions
+            .Include(a => a.Owners).ThenInclude(o => o.User)
             .Include(a => a.Weeks)
             .Include(a => a.WorkItem)!.ThenInclude(i => i!.Project)
             .AsNoTracking()

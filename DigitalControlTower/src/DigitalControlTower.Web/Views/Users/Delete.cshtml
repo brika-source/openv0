@@ -3,10 +3,11 @@
 
 <h1 class="h3 mb-3">Delete user</h1>
 
-<div class="card card-body" style="max-width: 40rem">
+<div class="card card-body" style="max-width: 42rem">
     <p>
-        Deleting '@Model.Name' clears the digital owner on @Model.OwnedProjects.Count project(s);
-        the projects themselves are kept.
+        Deleting <span class="handle">@Model.Handle</span> (@Model.Name) drops them from
+        @ViewBag.ActionCount action(s) and clears them as digital owner on @Model.OwnedProjects.Count
+        and as project manager on @Model.ManagedProjects.Count project(s). The projects and actions themselves are kept.
     </p>
     <form asp-action="Delete" asp-route-id="@Model.Id" method="post" class="d-flex gap-2">
         @Html.AntiForgeryToken()

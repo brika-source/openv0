@@ -36,3 +36,18 @@ body {
 
 .breadcrumb { margin-bottom: .5rem; }
 .progress-bar.bg-light { color: #212529; }
+
+/* People are always shown by their mail alias (handle). */
+.handle {
+    font-family: ui-monospace, SFMono-Regular, "Cascadia Mono", Consolas, monospace;
+    font-size: .82rem;
+    background-color: #eef2ff;
+    border: 1px solid #dee4ff;
+    border-radius: .25rem;
+    padding: .05rem .3rem;
+    color: #3b4cca;
+    text-decoration: none;
+    white-space: nowrap;
+}
+a.handle:hover { background-color: #dde4ff; text-decoration: none; }
+td .handle + .handle, dd .handle + .handle { margin-left: .25rem; }

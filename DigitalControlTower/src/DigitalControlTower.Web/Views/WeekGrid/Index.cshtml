@@ -76,7 +76,7 @@
                         @row.Action.Name
                         <div class="small text-muted">@row.ProjectName &middot; @row.WorkItemName</div>
                     </td>
-                    <td class="small">@row.Action.Owner</td>
+                    <td class="small"><partial name="_OwnerHandles" model="row.Action" /></td>
                     <td><partial name="_StatusBadge" model="row.Action.Status" /></td>
                     @foreach (var week in Model.Weeks)
                     {

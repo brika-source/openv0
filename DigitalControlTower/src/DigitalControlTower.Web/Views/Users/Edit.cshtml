@@ -1,20 +1,11 @@
 @model AppUser
-@{ ViewData["Title"] = "Edit user"; }
+@{ ViewData["Title"] = $"Edit {Model.Handle}"; }
 
-<h1 class="h3 mb-3">Edit user</h1>
+<h1 class="h3 mb-3">Edit <span class="handle">@Model.Handle</span></h1>
 
-<form asp-action="Edit" asp-route-id="@Model.Id" method="post" class="card card-body" style="max-width: 32rem">
+<form asp-action="Edit" asp-route-id="@Model.Id" method="post" class="card card-body" style="max-width: 34rem">
     @Html.AntiForgeryToken()
-    <div class="mb-3">
-        <label asp-for="Name" class="form-label"></label>
-        <input asp-for="Name" class="form-control" />
-        <span asp-validation-for="Name" class="text-danger small"></span>
-    </div>
-    <div class="mb-3">
-        <label asp-for="Email" class="form-label"></label>
-        <input asp-for="Email" class="form-control" type="email" />
-        <span asp-validation-for="Email" class="text-danger small"></span>
-    </div>
+    <partial name="_Form" model="Model" />
     <div class="d-flex gap-2">
         <button type="submit" class="btn btn-primary">Save</button>
         <a class="btn btn-outline-secondary" asp-action="Index">Cancel</a>

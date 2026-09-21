@@ -38,7 +38,7 @@
             <div class="card-header fw-semibold">Detail</div>
             <div class="card-body">
                 <dl class="row mb-0 small">
-                    <dt class="col-sm-3">Owner</dt><dd class="col-sm-3">@(Model.Owner ?? "—")</dd>
+                    <dt class="col-sm-3">Owners</dt><dd class="col-sm-3"><partial name="_OwnerHandles" model="Model" /></dd>
                     <dt class="col-sm-3">Source</dt><dd class="col-sm-3">@Model.Source</dd>
                     <dt class="col-sm-3">Recurrence</dt><dd class="col-sm-3">@Model.Recurrence.DisplayName()</dd>
                     <dt class="col-sm-3">Review date</dt><dd class="col-sm-3">@(Model.ReviewDate?.ToString("dd MMM yyyy") ?? "—")</dd>

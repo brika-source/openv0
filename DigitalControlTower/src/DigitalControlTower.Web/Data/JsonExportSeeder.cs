@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using DigitalControlTower.Web.Models;
+using DigitalControlTower.Web.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace DigitalControlTower.Web.Data;
@@ -36,21 +37,36 @@ public class JsonExportSeeder(ApplicationDbContext db, IWebHostEnvironment env, 
         await db.SaveChangesAsync(ct);
 
         logger.LogInformation(
-            "Seed complete: {Pillars} pillars, {Projects} projects, {Items} work items, {Actions} actions.",
-            db.Pillars.Local.Count, db.Projects.Local.Count, db.WorkItems.Local.Count, db.Actions.Local.Count);
+            "Seed complete: {Users} users, {Pillars} pillars, {Projects} projects, {Items} work items, {Actions} actions.",
+            db.Users.Local.Count, db.Pillars.Local.Count, db.Projects.Local.Count,
+            db.WorkItems.Local.Count, db.Actions.Local.Count);
     }
 
     private void Import(JsonElement root)
     {
-        var userIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        // Everyone is identified by their mail alias. Users on file keep the alias from
+        // their address; free-text names elsewhere in the export are matched to them, or
+        // added as provisional users with a derived handle.
+        var people = new PeopleDirectory();
 
         if (root.TryGetProperty("users", out var users))
         {
             foreach (var u in users.EnumerateArray())
             {
                 var id = Str(u, "id");
-                if (string.IsNullOrWhiteSpace(id) || !userIds.Add(id)) continue;
-                db.Users.Add(new AppUser { Id = id, Name = Str(u, "name") ?? id, Email = Str(u, "email") ?? "" });
+                var email = Str(u, "email") ?? "";
+                if (string.IsNullOrWhiteSpace(id)) continue;
+
+                var user = new AppUser
+                {
+                    Id = id,
+                    Handle = UserHandle.FromEmail(email),
+                    Name = Str(u, "name") ?? id,
+                    Email = email
+                };
+
+                if (string.IsNullOrWhiteSpace(user.Handle)) user.Handle = UserHandle.FromName(user.Name);
+                people.Add(user);
             }
         }
 
@@ -71,7 +87,11 @@ public class JsonExportSeeder(ApplicationDbContext db, IWebHostEnvironment env, 
                 db.SerialCounters.Add(new SerialCounter { Name = s.Name, LastValue = s.Value.TryGetInt32(out var v) ? v : 0 });
         }
 
-        if (!root.TryGetProperty("pillars", out var pillars)) return;
+        if (!root.TryGetProperty("pillars", out var pillars))
+        {
+            db.Users.AddRange(people.All);
+            return;
+        }
 
         var pillarOrder = 0;
         foreach (var p in pillars.EnumerateArray())
@@ -89,6 +109,8 @@ public class JsonExportSeeder(ApplicationDbContext db, IWebHostEnvironment env, 
             foreach (var pr in projects.EnumerateArray())
             {
                 var ownerId = Str(pr, "digitalOwner");
+                var digitalOwner = ownerId is null ? null : people.All.FirstOrDefault(u => u.Id == ownerId);
+                var pm = people.Resolve(Str(pr, "pm"));
                 var project = new Project
                 {
                     Id = Str(pr, "id") ?? Guid.NewGuid().ToString("N"),
@@ -96,8 +118,8 @@ public class JsonExportSeeder(ApplicationDbContext db, IWebHostEnvironment env, 
                     Name = Str(pr, "name") ?? "Unnamed project",
                     Scope = Enum<ProjectScope>(Str(pr, "scope")),
                     DeptOwner = Str(pr, "deptOwner"),
-                    DigitalOwnerId = ownerId is not null && userIds.Contains(ownerId) ? ownerId : null,
-                    Pm = Str(pr, "pm"),
+                    DigitalOwnerId = digitalOwner?.Id,
+                    PmId = pm?.Id,
                     Status = Enum<ProjectStatus>(Str(pr, "status")) ?? ProjectStatus.NotStarted,
                     StartDate = Date(Str(pr, "startDate")),
                     DueDate = Date(Str(pr, "dueDate")),
@@ -107,7 +129,7 @@ public class JsonExportSeeder(ApplicationDbContext db, IWebHostEnvironment env, 
                     CostAvoidance = Money(Str(pr, "costAvoidance")),
                     LabourHoursSaving = Money(Str(pr, "laborHoursSaving")),
                     ProductivityImprovement = Money(Str(pr, "productivityImprovement")),
-                    SavingsType = Blank(Str(pr, "savingsType")),
+                    SavingsType = Str(pr, "savingsType"),
                     CreatedAt = Stamp(Str(pr, "createdAt")) ?? DateTime.UtcNow
                 };
                 project.UpdatedAt = project.CreatedAt;
@@ -123,22 +145,26 @@ public class JsonExportSeeder(ApplicationDbContext db, IWebHostEnvironment env, 
                         Id = Str(it, "id") ?? Guid.NewGuid().ToString("N"),
                         ProjectId = project.Id,
                         Name = Str(it, "name") ?? "Unnamed work item",
-                        Notes = Blank(Str(it, "notes")),
+                        Notes = Str(it, "notes"),
                         SortOrder = itemOrder++
                     };
                     db.WorkItems.Add(item);
-                    ImportComments(it, workItemId: item.Id, actionId: null);
+                    ImportComments(it, workItemId: item.Id, actionId: null, people);
 
                     if (!it.TryGetProperty("actions", out var actions)) continue;
 
                     foreach (var a in actions.EnumerateArray())
-                        ImportAction(a, item.Id);
+                        ImportAction(a, item.Id, people);
                 }
             }
         }
+
+        // Provisional people are discovered while walking the actions, so users are
+        // registered once the whole export has been read.
+        db.Users.AddRange(people.All);
     }
 
-    private void ImportAction(JsonElement a, string workItemId)
+    private void ImportAction(JsonElement a, string workItemId, PeopleDirectory people)
     {
         var created = Stamp(Str(a, "createdAt")) ?? DateTime.UtcNow;
         var action = new ActionItem
@@ -147,23 +173,25 @@ public class JsonExportSeeder(ApplicationDbContext db, IWebHostEnvironment env, 
             WorkItemId = workItemId,
             Serial = Str(a, "serial") ?? "",
             Name = Str(a, "name") ?? "Unnamed action",
-            Owner = Blank(Str(a, "owner")),
             Status = Enum<ActionStatus>(Str(a, "status")) ?? ActionStatus.NotStarted,
             Priority = Enum<Priority>(Str(a, "priority")) ?? Priority.Medium,
             Quarter = Enum<Quarter>(Str(a, "quarter")) ?? Quarter.None,
             Recurrence = Enum<Recurrence>(Str(a, "recurrence")) ?? Recurrence.None,
-            Source = Blank(Str(a, "source")) ?? "90-Day",
-            Target = Blank(Str(a, "target")),
-            SuccessCriteria = Blank(Str(a, "successCriteria")),
-            NextStep = Blank(Str(a, "nextStep")),
-            Notes = Blank(Str(a, "notes")),
-            CheckResult = Blank(Str(a, "checkResult")),
+            Source = Str(a, "source") ?? "90-Day",
+            Target = Str(a, "target"),
+            SuccessCriteria = Str(a, "successCriteria"),
+            NextStep = Str(a, "nextStep"),
+            Notes = Str(a, "notes"),
+            CheckResult = Str(a, "checkResult"),
             ReviewDate = Date(Str(a, "reviewDate")),
             CompletionDate = Date(Str(a, "completionDate")),
             CreatedAt = created,
             UpdatedAt = Stamp(Str(a, "updatedAt")) ?? created
         };
         db.Actions.Add(action);
+
+        foreach (var owner in people.ResolveMany(Str(a, "owner")))
+            db.ActionOwners.Add(new ActionOwner { ActionItemId = action.Id, UserId = owner.Id });
 
         if (a.TryGetProperty("weeks", out var weeks) && weeks.ValueKind == JsonValueKind.Object)
         {
@@ -199,16 +227,16 @@ public class JsonExportSeeder(ApplicationDbContext db, IWebHostEnvironment env, 
                     Field = Str(h, "field") ?? "unknown",
                     FromValue = Str(h, "from"),
                     ToValue = Str(h, "to"),
-                    By = Blank(Str(h, "by")) ?? "Unknown",
+                    By = people.HandleOf(Str(h, "by"), HttpContextCurrentUser.Unknown),
                     At = Stamp(Str(h, "at")) ?? action.UpdatedAt
                 });
             }
         }
 
-        ImportComments(a, workItemId: null, actionId: action.Id);
+        ImportComments(a, workItemId: null, actionId: action.Id, people);
     }
 
-    private void ImportComments(JsonElement owner, string? workItemId, string? actionId)
+    private void ImportComments(JsonElement owner, string? workItemId, string? actionId, PeopleDirectory people)
     {
         if (!owner.TryGetProperty("comments", out var comments) || comments.ValueKind != JsonValueKind.Array) return;
 
@@ -219,15 +247,16 @@ public class JsonExportSeeder(ApplicationDbContext db, IWebHostEnvironment env, 
                 Id = Str(c, "id") ?? Guid.NewGuid().ToString("N"),
                 ActionItemId = actionId,
                 WorkItemId = workItemId,
-                Author = Blank(Str(c, "author")) ?? "Unknown",
+                Author = people.HandleOf(Str(c, "author"), HttpContextCurrentUser.Unknown),
                 Text = Str(c, "text") ?? "",
                 At = Stamp(Str(c, "at")) ?? DateTime.UtcNow
             });
         }
     }
 
+    /// <summary>Reads a string property, trimmed. Missing and blank values come back as null.</summary>
     private static string? Str(JsonElement e, string name) =>
-        e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() : null;
+        e.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? Blank(v.GetString()) : null;
 
     private static string? Blank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 

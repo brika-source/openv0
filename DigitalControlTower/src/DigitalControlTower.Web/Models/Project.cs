@@ -31,8 +31,11 @@ public class Project
     [ForeignKey(nameof(DigitalOwnerId))]
     public AppUser? DigitalOwner { get; set; }
 
-    [StringLength(128), Display(Name = "Project manager")]
-    public string? Pm { get; set; }
+    [StringLength(64), Display(Name = "Project manager")]
+    public string? PmId { get; set; }
+
+    [ForeignKey(nameof(PmId))]
+    public AppUser? Pm { get; set; }
 
     [Display(Name = "Status")]
     public ProjectStatus Status { get; set; } = ProjectStatus.NotStarted;

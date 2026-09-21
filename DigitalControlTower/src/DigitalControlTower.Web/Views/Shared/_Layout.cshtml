@@ -1,6 +1,11 @@
+@using Microsoft.EntityFrameworkCore
+@inject DigitalControlTower.Web.Data.ApplicationDbContext Db
 @{
     var currentUser = Context.Request.Cookies["dct_user"];
     var returnUrl = Context.Request.Path + Context.Request.QueryString;
+
+    // Handles for the "acting as" picker in the header.
+    var handles = await Db.Users.AsNoTracking().OrderBy(u => u.Handle).Select(u => u.Handle).ToListAsync();
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -34,8 +39,14 @@
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="returnUrl" value="@returnUrl" />
                     <span class="navbar-text small">Acting as</span>
-                    <input class="form-control form-control-sm" type="text" name="name" value="@currentUser"
-                           placeholder="your name" style="width: 11rem" />
+                    <input class="form-control form-control-sm" type="text" name="handle" value="@currentUser"
+                           list="user-handles" placeholder="brika.wm" style="width: 11rem" />
+                    <datalist id="user-handles">
+                        @foreach (var handle in handles)
+                        {
+                            <option value="@handle"></option>
+                        }
+                    </datalist>
                     <button class="btn btn-sm btn-outline-light" type="submit">Set</button>
                 </form>
             </div>

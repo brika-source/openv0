@@ -17,8 +17,11 @@
     </div>
 
     <div class="col-md-3">
-        <label asp-for="Owner" class="form-label"></label>
-        <input asp-for="Owner" class="form-control" list="owner-suggestions" />
+        <label class="form-label">Owners</label>
+        <select name="ownerIds" class="form-select" multiple size="5"
+                asp-items="ViewBag.Owners as Microsoft.AspNetCore.Mvc.Rendering.MultiSelectList"></select>
+        <div class="form-text">Pick one or more handles (ctrl/cmd-click for several).</div>
+        @Html.ValidationMessage("ownerIds", new { @class = "text-danger small" })
     </div>
     <div class="col-md-2">
         <label asp-for="Status" class="form-label"></label>

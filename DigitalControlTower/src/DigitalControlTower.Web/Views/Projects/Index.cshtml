@@ -54,8 +54,8 @@
                     <td class="small text-muted">@project.Pillar?.Name</td>
                     <td class="small">@(project.Scope?.DisplayName() ?? "—")</td>
                     <td class="small">@(project.DeptOwner ?? "—")</td>
-                    <td class="small">@(project.DigitalOwner?.Name ?? "—")</td>
-                    <td class="small">@(project.Pm ?? "—")</td>
+                    <td class="small"><partial name="_Handle" model="project.DigitalOwner" /></td>
+                    <td class="small"><partial name="_Handle" model="project.Pm" /></td>
                     <td class="small text-nowrap">@(project.DueDate?.ToString("dd MMM yy") ?? "—")</td>
                     <td class="text-end">@count.Actions</td>
                     <td>

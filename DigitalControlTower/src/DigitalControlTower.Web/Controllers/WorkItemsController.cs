@@ -12,7 +12,7 @@ public class WorkItemsController(ApplicationDbContext db, ICurrentUser currentUs
     {
         var item = await db.WorkItems
             .Include(i => i.Project)!.ThenInclude(p => p!.Pillar)
-            .Include(i => i.Actions.OrderBy(a => a.Serial))
+            .Include(i => i.Actions.OrderBy(a => a.Serial)).ThenInclude(a => a.Owners).ThenInclude(o => o.User)
             .Include(i => i.Comments)
             .AsNoTracking()
             .FirstOrDefaultAsync(i => i.Id == id, ct);
@@ -107,7 +107,7 @@ public class WorkItemsController(ApplicationDbContext db, ICurrentUser currentUs
         db.Comments.Add(new Comment
         {
             WorkItemId = id,
-            Author = currentUser.Name,
+            Author = currentUser.Handle,
             Text = text.Trim(),
             At = DateTime.UtcNow
         });

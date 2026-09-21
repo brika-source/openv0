@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DigitalControlTower.Web.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260921192614_InitialCreate")]
+    [Migration("20260921200555_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -90,10 +90,6 @@ namespace DigitalControlTower.Web.Data.Migrations
                     b.Property<string>("Notes")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<string>("Owner")
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
-
                     b.Property<string>("Priority")
                         .IsRequired()
                         .HasMaxLength(32)
@@ -144,8 +140,6 @@ namespace DigitalControlTower.Web.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Owner");
-
                     b.HasIndex("Serial")
                         .IsUnique();
 
@@ -154,6 +148,34 @@ namespace DigitalControlTower.Web.Data.Migrations
                     b.HasIndex("WorkItemId");
 
                     b.ToTable("Actions");
+                });
+
+            modelBuilder.Entity("DigitalControlTower.Web.Models.ActionOwner", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ActionItemId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("ActionItemId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("ActionOwners");
                 });
 
             modelBuilder.Entity("DigitalControlTower.Web.Models.ActionTag", b =>
@@ -222,6 +244,14 @@ namespace DigitalControlTower.Web.Data.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
+                    b.Property<string>("Handle")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<bool>("IsProvisional")
+                        .HasColumnType("bit");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(128)
@@ -230,6 +260,9 @@ namespace DigitalControlTower.Web.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.HasIndex("Handle")
                         .IsUnique();
 
                     b.ToTable("Users");
@@ -340,9 +373,9 @@ namespace DigitalControlTower.Web.Data.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("nvarchar(64)");
 
-                    b.Property<string>("Pm")
-                        .HasMaxLength(128)
-                        .HasColumnType("nvarchar(128)");
+                    b.Property<string>("PmId")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
 
                     b.Property<decimal?>("ProductivityImprovement")
                         .HasColumnType("decimal(18,2)");
@@ -371,6 +404,8 @@ namespace DigitalControlTower.Web.Data.Migrations
                     b.HasIndex("DigitalOwnerId");
 
                     b.HasIndex("PillarId");
+
+                    b.HasIndex("PmId");
 
                     b.HasIndex("Status");
 
@@ -455,6 +490,25 @@ namespace DigitalControlTower.Web.Data.Migrations
                     b.Navigation("WorkItem");
                 });
 
+            modelBuilder.Entity("DigitalControlTower.Web.Models.ActionOwner", b =>
+                {
+                    b.HasOne("DigitalControlTower.Web.Models.ActionItem", "ActionItem")
+                        .WithMany("Owners")
+                        .HasForeignKey("ActionItemId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DigitalControlTower.Web.Models.AppUser", "User")
+                        .WithMany("ActionOwnerships")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("ActionItem");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("DigitalControlTower.Web.Models.ActionTag", b =>
                 {
                     b.HasOne("DigitalControlTower.Web.Models.ActionItem", "ActionItem")
@@ -499,7 +553,7 @@ namespace DigitalControlTower.Web.Data.Migrations
                     b.HasOne("DigitalControlTower.Web.Models.AppUser", "DigitalOwner")
                         .WithMany("OwnedProjects")
                         .HasForeignKey("DigitalOwnerId")
-                        .OnDelete(DeleteBehavior.SetNull);
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("DigitalControlTower.Web.Models.Pillar", "Pillar")
                         .WithMany("Projects")
@@ -507,9 +561,16 @@ namespace DigitalControlTower.Web.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("DigitalControlTower.Web.Models.AppUser", "Pm")
+                        .WithMany("ManagedProjects")
+                        .HasForeignKey("PmId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.Navigation("DigitalOwner");
 
                     b.Navigation("Pillar");
+
+                    b.Navigation("Pm");
                 });
 
             modelBuilder.Entity("DigitalControlTower.Web.Models.WorkItem", b =>
@@ -529,6 +590,8 @@ namespace DigitalControlTower.Web.Data.Migrations
 
                     b.Navigation("History");
 
+                    b.Navigation("Owners");
+
                     b.Navigation("Tags");
 
                     b.Navigation("Weeks");
@@ -536,6 +599,10 @@ namespace DigitalControlTower.Web.Data.Migrations
 
             modelBuilder.Entity("DigitalControlTower.Web.Models.AppUser", b =>
                 {
+                    b.Navigation("ActionOwnerships");
+
+                    b.Navigation("ManagedProjects");
+
                     b.Navigation("OwnedProjects");
                 });
 
