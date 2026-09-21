@@ -20,6 +20,21 @@ public class DashboardViewModel
     public IReadOnlyList<ActionHistory> RecentActivity { get; set; } = [];
     public WeekDate? CurrentWeek { get; set; }
 
+    /// <summary>Today's digital team meeting, when one has been opened already.</summary>
+    public Meeting? TodaysMeeting { get; set; }
+    public Meeting? LastMeeting { get; set; }
+    public int MeetingActionsOpen { get; set; }
+
+    /// <summary>Value delivered so far, for the headline on the home page.</summary>
+    public decimal TotalFinancialValue { get; set; }
+    public decimal TotalHoursSaved { get; set; }
+    public int ProjectsWithoutValue { get; set; }
+
+    /// <summary>Reminders that will go out on the next run.</summary>
+    public int RemindersDueNextRun { get; set; }
+    public DateOnly ReminderTargetDate { get; set; }
+    public int ActionsWithoutDueDate { get; set; }
+
     public record StatusCount(ActionStatus Status, int Count);
     public record OwnerLoad(string Owner, int Open, int Complete);
 

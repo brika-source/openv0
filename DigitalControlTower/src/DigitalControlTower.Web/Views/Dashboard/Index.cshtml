@@ -60,6 +60,105 @@
     </div>
 </div>
 
+<div class="row g-3 mb-3">
+    <div class="col-lg-5">
+        <div class="card h-100 border-primary">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span class="fw-semibold"><span aria-hidden="true">&#128197;</span> Digital team meeting</span>
+                <a class="btn btn-sm btn-primary" asp-controller="Meetings" asp-action="Today">
+                    @(Model.TodaysMeeting is null ? "Start today's meeting" : "Open today's meeting")
+                </a>
+            </div>
+            <div class="card-body">
+                @if (Model.TodaysMeeting is not null)
+                {
+                    <div class="mb-2">
+                        <span class="badge bg-light text-dark border">@Model.TodaysMeeting.Serial</span>
+                        <strong>@Model.TodaysMeeting.Title</strong>
+                        <span class="text-muted small">@Model.TodaysMeeting.Date.ToString("dddd d MMMM yyyy")</span>
+                    </div>
+                    <div class="small mb-2">
+                        Participants:
+                        @if (Model.TodaysMeeting.Participants.Count == 0)
+                        {
+                            <span class="text-muted">none yet</span>
+                        }
+                        else
+                        {
+                            foreach (var person in Model.TodaysMeeting.Participants.Select(p => p.User)
+                                .Where(u => u is not null).OrderBy(u => u!.Handle))
+                            {
+                                <span class="handle" title="@person!.Name">@person.Handle</span>
+                            }
+                        }
+                    </div>
+                }
+                else
+                {
+                    <p class="mb-2 text-muted">
+                        No meeting opened for today yet. Opening one creates it on today's date; you can change the
+                        date, add participants, write the minutes and raise actions that flow into the master plan.
+                    </p>
+                }
+                <div class="small text-muted">
+                    @Model.MeetingActionsOpen open action(s) raised in meetings &middot;
+                    <a asp-controller="Meetings" asp-action="Index">meetings action plan</a>
+                    @if (Model.LastMeeting is not null)
+                    {
+                        <span>&middot; last meeting @Model.LastMeeting.Date.ToString("d MMM")</span>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header fw-semibold">Value added</div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between"><span class="text-muted small">Financial value / year</span><strong>@Model.TotalFinancialValue.ToString("N0")</strong></div>
+                <div class="d-flex justify-content-between"><span class="text-muted small">Labour hours saved</span><strong>@Model.TotalHoursSaved.ToString("N0")</strong></div>
+                <hr class="my-2" />
+                <div class="small">
+                    <a asp-controller="Reports" asp-action="Value">Full value report</a>
+                    @if (Model.ProjectsWithoutValue > 0)
+                    {
+                        <div class="mt-1">
+                            <a class="text-danger" asp-controller="Reports" asp-action="Gaps" asp-route-filter="ProjectsWithoutValue">
+                                @Model.ProjectsWithoutValue project(s) with no value captured
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-3">
+        <div class="card h-100">
+            <div class="card-header fw-semibold">Reminders</div>
+            <div class="card-body">
+                <div class="display-6">@Model.RemindersDueNextRun</div>
+                <div class="small text-muted">
+                    action(s) due @Model.ReminderTargetDate.ToString("ddd d MMM") — owners are mailed two days ahead.
+                </div>
+                <hr class="my-2" />
+                <div class="small">
+                    <a asp-controller="Reminders" asp-action="Index">Reminder queue</a>
+                    @if (Model.ActionsWithoutDueDate > 0)
+                    {
+                        <div class="mt-1">
+                            <a class="text-danger" asp-controller="Reports" asp-action="Gaps" asp-route-filter="ActionsWithoutDueDate">
+                                @Model.ActionsWithoutDueDate open action(s) with no due date
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row g-3">
     <div class="col-lg-7">
         <div class="card h-100">
@@ -145,7 +244,7 @@
                                 <div class="text-muted small">@action.WorkItem?.Project?.Name &middot; @action.WorkItem?.Name</div>
                             </td>
                             <td><partial name="_OwnerHandles" model="action" /></td>
-                            <td>@(action.ReviewDate?.ToString("dd MMM") ?? "—")</td>
+                            <td>@(action.DueDate?.ToString("dd MMM") ?? "—")</td>
                             <td><partial name="_StatusBadge" model="action.Status" /></td>
                         </tr>
                     }

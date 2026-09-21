@@ -25,6 +25,25 @@ namespace DigitalControlTower.Web.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "ReminderLogs",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Handle = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
+                    Email = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
+                    ActionCount = table.Column<int>(type: "int", nullable: false),
+                    Serials = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: false),
+                    SentAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    Succeeded = table.Column<bool>(type: "bit", nullable: false),
+                    Error = table.Column<string>(type: "nvarchar(1000)", maxLength: 1000, nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ReminderLogs", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "SerialCounters",
                 columns: table => new
                 {
@@ -64,6 +83,30 @@ namespace DigitalControlTower.Web.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Meetings",
+                columns: table => new
+                {
+                    Id = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
+                    Serial = table.Column<string>(type: "nvarchar(32)", maxLength: 32, nullable: false),
+                    Date = table.Column<DateOnly>(type: "date", nullable: false),
+                    Title = table.Column<string>(type: "nvarchar(200)", maxLength: 200, nullable: false),
+                    Minutes = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    ChairUserId = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: true),
+                    CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Meetings", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Meetings_Users_ChairUserId",
+                        column: x => x.ChairUserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Projects",
                 columns: table => new
                 {
@@ -83,7 +126,8 @@ namespace DigitalControlTower.Web.Data.Migrations
                     CostAvoidance = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
                     LabourHoursSaving = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
                     ProductivityImprovement = table.Column<decimal>(type: "decimal(18,2)", nullable: true),
-                    SavingsType = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: true),
+                    SavingsType = table.Column<string>(type: "nvarchar(32)", maxLength: 32, nullable: false),
+                    ValueNotes = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
@@ -105,6 +149,32 @@ namespace DigitalControlTower.Web.Data.Migrations
                     table.ForeignKey(
                         name: "FK_Projects_Users_PmId",
                         column: x => x.PmId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "MeetingParticipants",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    MeetingId = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
+                    UserId = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_MeetingParticipants", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_MeetingParticipants_Meetings_MeetingId",
+                        column: x => x.MeetingId,
+                        principalTable: "Meetings",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_MeetingParticipants_Users_UserId",
+                        column: x => x.UserId,
                         principalTable: "Users",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
@@ -136,7 +206,12 @@ namespace DigitalControlTower.Web.Data.Migrations
                 columns: table => new
                 {
                     Id = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
-                    WorkItemId = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
+                    WorkItemId = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: true),
+                    ProjectId = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: true),
+                    PillarId = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: true),
+                    MeetingId = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: true),
+                    RelatedActionId = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: true),
+                    Origin = table.Column<string>(type: "nvarchar(16)", maxLength: 16, nullable: false),
                     Serial = table.Column<string>(type: "nvarchar(32)", maxLength: 32, nullable: false),
                     Name = table.Column<string>(type: "nvarchar(400)", maxLength: 400, nullable: false),
                     Status = table.Column<string>(type: "nvarchar(32)", maxLength: 32, nullable: false),
@@ -149,14 +224,39 @@ namespace DigitalControlTower.Web.Data.Migrations
                     NextStep = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Notes = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     CheckResult = table.Column<string>(type: "nvarchar(max)", nullable: true),
-                    ReviewDate = table.Column<DateOnly>(type: "date", nullable: true),
+                    DueDate = table.Column<DateOnly>(type: "date", nullable: true),
                     CompletionDate = table.Column<DateOnly>(type: "date", nullable: true),
+                    ReminderSentAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    ReminderSentForDueDate = table.Column<DateOnly>(type: "date", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Actions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Actions_Actions_RelatedActionId",
+                        column: x => x.RelatedActionId,
+                        principalTable: "Actions",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_Actions_Meetings_MeetingId",
+                        column: x => x.MeetingId,
+                        principalTable: "Meetings",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
+                    table.ForeignKey(
+                        name: "FK_Actions_Pillars_PillarId",
+                        column: x => x.PillarId,
+                        principalTable: "Pillars",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_Actions_Projects_ProjectId",
+                        column: x => x.ProjectId,
+                        principalTable: "Projects",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
                         name: "FK_Actions_WorkItems_WorkItemId",
                         column: x => x.WorkItemId,
@@ -301,6 +401,31 @@ namespace DigitalControlTower.Web.Data.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Actions_DueDate",
+                table: "Actions",
+                column: "DueDate");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Actions_MeetingId",
+                table: "Actions",
+                column: "MeetingId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Actions_PillarId",
+                table: "Actions",
+                column: "PillarId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Actions_ProjectId",
+                table: "Actions",
+                column: "ProjectId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Actions_RelatedActionId",
+                table: "Actions",
+                column: "RelatedActionId");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Actions_Serial",
                 table: "Actions",
                 column: "Serial",
@@ -339,6 +464,33 @@ namespace DigitalControlTower.Web.Data.Migrations
                 column: "WorkItemId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_MeetingParticipants_MeetingId_UserId",
+                table: "MeetingParticipants",
+                columns: new[] { "MeetingId", "UserId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_MeetingParticipants_UserId",
+                table: "MeetingParticipants",
+                column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Meetings_ChairUserId",
+                table: "Meetings",
+                column: "ChairUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Meetings_Date",
+                table: "Meetings",
+                column: "Date");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Meetings_Serial",
+                table: "Meetings",
+                column: "Serial",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Pillars_Name",
                 table: "Pillars",
                 column: "Name",
@@ -363,6 +515,11 @@ namespace DigitalControlTower.Web.Data.Migrations
                 name: "IX_Projects_Status",
                 table: "Projects",
                 column: "Status");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ReminderLogs_SentAt",
+                table: "ReminderLogs",
+                column: "SentAt");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Users_Email",
@@ -401,6 +558,12 @@ namespace DigitalControlTower.Web.Data.Migrations
                 name: "Comments");
 
             migrationBuilder.DropTable(
+                name: "MeetingParticipants");
+
+            migrationBuilder.DropTable(
+                name: "ReminderLogs");
+
+            migrationBuilder.DropTable(
                 name: "SerialCounters");
 
             migrationBuilder.DropTable(
@@ -408,6 +571,9 @@ namespace DigitalControlTower.Web.Data.Migrations
 
             migrationBuilder.DropTable(
                 name: "Actions");
+
+            migrationBuilder.DropTable(
+                name: "Meetings");
 
             migrationBuilder.DropTable(
                 name: "WorkItems");

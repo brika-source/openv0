@@ -16,4 +16,7 @@ public class Pillar
     public int SortOrder { get; set; }
 
     public ICollection<Project> Projects { get; set; } = new List<Project>();
+
+    /// <summary>Actions rolled up to this pillar, including ones raised in a meeting.</summary>
+    public ICollection<ActionItem> Actions { get; set; } = new List<ActionItem>();
 }

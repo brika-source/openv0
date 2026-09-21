@@ -1,0 +1,112 @@
+@model GapReportViewModel
+@{ ViewData["Title"] = "What is missing"; }
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h3 mb-0">What is missing</h1>
+        <div class="text-muted small">@Model.TotalGaps gap(s) in the data behind the plan.</div>
+    </div>
+    <a class="btn btn-outline-secondary" asp-action="Value">Value report</a>
+</div>
+
+<div class="mb-3 d-flex flex-wrap gap-2">
+    @foreach (var option in Enum.GetValues<GapFilter>())
+    {
+        var label = option switch
+        {
+            GapFilter.All => "Everything",
+            GapFilter.ActionsWithoutDueDate => "Actions with no due date",
+            GapFilter.ActionsWithoutOwner => "Actions with no owner",
+            GapFilter.OverdueActions => "Overdue actions",
+            GapFilter.ProjectsWithoutValue => "Projects with no value",
+            GapFilter.ProjectsWithoutOwner => "Projects with no owner",
+            GapFilter.ProjectsWithoutItems => "Projects with no work items",
+            _ => "Work items with no actions"
+        };
+        <a class="btn btn-sm @(Model.Filter == option ? "btn-dark" : "btn-outline-secondary")"
+           asp-action="Gaps" asp-route-filter="@option">@label</a>
+    }
+</div>
+
+@if (Model.Shows(GapFilter.ActionsWithoutDueDate))
+{
+    var block = new DigitalControlTower.Web.Views.Reports.ActionGapModel(
+        "Actions with no due date",
+        "Nobody gets reminded about these — a reminder goes out two days before a due date.",
+        Model.ActionsWithoutDueDate);
+    <partial name="_ActionGap" model="block" />
+}
+@if (Model.Shows(GapFilter.ActionsWithoutOwner))
+{
+    var block = new DigitalControlTower.Web.Views.Reports.ActionGapModel(
+        "Actions with no owner",
+        "An action with no handle against it cannot be chased.",
+        Model.ActionsWithoutOwner);
+    <partial name="_ActionGap" model="block" />
+}
+@if (Model.Shows(GapFilter.OverdueActions))
+{
+    var block = new DigitalControlTower.Web.Views.Reports.ActionGapModel(
+        "Overdue actions",
+        "Past their due date and still open.",
+        Model.OverdueActions);
+    <partial name="_ActionGap" model="block" />
+}
+
+@if (Model.Shows(GapFilter.ProjectsWithoutValue))
+{
+    var block = new DigitalControlTower.Web.Views.Reports.ProjectGapModel(
+        "Projects with no value captured",
+        "No value type, no financial value, no hours, no productivity gain — so they count for nothing in the value report.",
+        Model.ProjectsWithoutValue);
+    <partial name="_ProjectGap" model="block" />
+}
+@if (Model.Shows(GapFilter.ProjectsWithoutOwner))
+{
+    var block = new DigitalControlTower.Web.Views.Reports.ProjectGapModel(
+        "Projects with no owner",
+        "Neither a digital owner nor a project manager.",
+        Model.ProjectsWithoutOwner);
+    <partial name="_ProjectGap" model="block" />
+}
+@if (Model.Shows(GapFilter.ProjectsWithoutItems))
+{
+    var block = new DigitalControlTower.Web.Views.Reports.ProjectGapModel(
+        "Projects with no work items",
+        "Nothing underneath them, so no actions can be tracked.",
+        Model.ProjectsWithoutItems);
+    <partial name="_ProjectGap" model="block" />
+}
+
+@if (Model.Shows(GapFilter.ItemsWithoutActions))
+{
+    <div class="card mb-3">
+        <div class="card-header">
+            <span class="fw-semibold">Work items with no actions</span>
+            <span class="badge bg-secondary">@Model.ItemsWithoutActions.Count</span>
+            <div class="small text-muted">Listed in the plan but with nothing to do against them.</div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0 align-middle">
+                <thead><tr><th>Work item</th><th>Project</th><th>Pillar</th><th></th></tr></thead>
+                <tbody>
+                @if (Model.ItemsWithoutActions.Count == 0)
+                {
+                    <tr><td colspan="4" class="text-muted text-center py-3">Nothing missing here.</td></tr>
+                }
+                @foreach (var item in Model.ItemsWithoutActions)
+                {
+                    <tr>
+                        <td><a asp-controller="WorkItems" asp-action="Details" asp-route-id="@item.Id">@item.Name</a></td>
+                        <td class="small text-muted">@item.Project?.Name</td>
+                        <td class="small text-muted">@item.Project?.Pillar?.Name</td>
+                        <td class="text-end">
+                            <a class="btn btn-sm btn-outline-primary" asp-controller="Actions" asp-action="Create" asp-route-workItemId="@item.Id">Add action</a>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

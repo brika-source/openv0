@@ -13,7 +13,7 @@ GO
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260921200555_InitialCreate'
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
 )
 BEGIN
     CREATE TABLE [Pillars] (
@@ -27,7 +27,26 @@ GO
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260921200555_InitialCreate'
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
+)
+BEGIN
+    CREATE TABLE [ReminderLogs] (
+        [Id] int NOT NULL IDENTITY,
+        [Handle] nvarchar(64) NOT NULL,
+        [Email] nvarchar(256) NOT NULL,
+        [ActionCount] int NOT NULL,
+        [Serials] nvarchar(1000) NOT NULL,
+        [SentAt] datetime2 NOT NULL,
+        [Succeeded] bit NOT NULL,
+        [Error] nvarchar(1000) NULL,
+        CONSTRAINT [PK_ReminderLogs] PRIMARY KEY ([Id])
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
 )
 BEGIN
     CREATE TABLE [SerialCounters] (
@@ -40,7 +59,7 @@ GO
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260921200555_InitialCreate'
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
 )
 BEGIN
     CREATE TABLE [Users] (
@@ -56,7 +75,7 @@ GO
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260921200555_InitialCreate'
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
 )
 BEGIN
     CREATE TABLE [WeekDates] (
@@ -69,7 +88,27 @@ GO
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260921200555_InitialCreate'
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
+)
+BEGIN
+    CREATE TABLE [Meetings] (
+        [Id] nvarchar(64) NOT NULL,
+        [Serial] nvarchar(32) NOT NULL,
+        [Date] date NOT NULL,
+        [Title] nvarchar(200) NOT NULL,
+        [Minutes] nvarchar(max) NULL,
+        [ChairUserId] nvarchar(64) NULL,
+        [CreatedAt] datetime2 NOT NULL,
+        [UpdatedAt] datetime2 NOT NULL,
+        CONSTRAINT [PK_Meetings] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_Meetings_Users_ChairUserId] FOREIGN KEY ([ChairUserId]) REFERENCES [Users] ([Id]) ON DELETE NO ACTION
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
 )
 BEGIN
     CREATE TABLE [Projects] (
@@ -89,7 +128,8 @@ BEGIN
         [CostAvoidance] decimal(18,2) NULL,
         [LabourHoursSaving] decimal(18,2) NULL,
         [ProductivityImprovement] decimal(18,2) NULL,
-        [SavingsType] nvarchar(64) NULL,
+        [SavingsType] nvarchar(32) NOT NULL,
+        [ValueNotes] nvarchar(max) NULL,
         [CreatedAt] datetime2 NOT NULL,
         [UpdatedAt] datetime2 NOT NULL,
         CONSTRAINT [PK_Projects] PRIMARY KEY ([Id]),
@@ -102,7 +142,23 @@ GO
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260921200555_InitialCreate'
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
+)
+BEGIN
+    CREATE TABLE [MeetingParticipants] (
+        [Id] int NOT NULL IDENTITY,
+        [MeetingId] nvarchar(64) NOT NULL,
+        [UserId] nvarchar(64) NOT NULL,
+        CONSTRAINT [PK_MeetingParticipants] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_MeetingParticipants_Meetings_MeetingId] FOREIGN KEY ([MeetingId]) REFERENCES [Meetings] ([Id]) ON DELETE CASCADE,
+        CONSTRAINT [FK_MeetingParticipants_Users_UserId] FOREIGN KEY ([UserId]) REFERENCES [Users] ([Id]) ON DELETE NO ACTION
+    );
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
 )
 BEGIN
     CREATE TABLE [WorkItems] (
@@ -119,12 +175,17 @@ GO
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260921200555_InitialCreate'
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
 )
 BEGIN
     CREATE TABLE [Actions] (
         [Id] nvarchar(64) NOT NULL,
-        [WorkItemId] nvarchar(64) NOT NULL,
+        [WorkItemId] nvarchar(64) NULL,
+        [ProjectId] nvarchar(64) NULL,
+        [PillarId] nvarchar(64) NULL,
+        [MeetingId] nvarchar(64) NULL,
+        [RelatedActionId] nvarchar(64) NULL,
+        [Origin] nvarchar(16) NOT NULL,
         [Serial] nvarchar(32) NOT NULL,
         [Name] nvarchar(400) NOT NULL,
         [Status] nvarchar(32) NOT NULL,
@@ -137,11 +198,17 @@ BEGIN
         [NextStep] nvarchar(max) NULL,
         [Notes] nvarchar(max) NULL,
         [CheckResult] nvarchar(max) NULL,
-        [ReviewDate] date NULL,
+        [DueDate] date NULL,
         [CompletionDate] date NULL,
+        [ReminderSentAt] datetime2 NULL,
+        [ReminderSentForDueDate] date NULL,
         [CreatedAt] datetime2 NOT NULL,
         [UpdatedAt] datetime2 NOT NULL,
         CONSTRAINT [PK_Actions] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_Actions_Actions_RelatedActionId] FOREIGN KEY ([RelatedActionId]) REFERENCES [Actions] ([Id]),
+        CONSTRAINT [FK_Actions_Meetings_MeetingId] FOREIGN KEY ([MeetingId]) REFERENCES [Meetings] ([Id]) ON DELETE SET NULL,
+        CONSTRAINT [FK_Actions_Pillars_PillarId] FOREIGN KEY ([PillarId]) REFERENCES [Pillars] ([Id]) ON DELETE NO ACTION,
+        CONSTRAINT [FK_Actions_Projects_ProjectId] FOREIGN KEY ([ProjectId]) REFERENCES [Projects] ([Id]) ON DELETE NO ACTION,
         CONSTRAINT [FK_Actions_WorkItems_WorkItemId] FOREIGN KEY ([WorkItemId]) REFERENCES [WorkItems] ([Id]) ON DELETE CASCADE
     );
 END;
@@ -149,7 +216,7 @@ GO
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260921200555_InitialCreate'
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
 )
 BEGIN
     CREATE TABLE [ActionHistories] (
@@ -168,7 +235,7 @@ GO
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260921200555_InitialCreate'
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
 )
 BEGIN
     CREATE TABLE [ActionOwners] (
@@ -184,7 +251,7 @@ GO
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260921200555_InitialCreate'
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
 )
 BEGIN
     CREATE TABLE [ActionTags] (
@@ -199,7 +266,7 @@ GO
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260921200555_InitialCreate'
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
 )
 BEGIN
     CREATE TABLE [ActionWeeks] (
@@ -215,7 +282,7 @@ GO
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260921200555_InitialCreate'
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
 )
 BEGIN
     CREATE TABLE [Comments] (
@@ -235,7 +302,7 @@ GO
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260921200555_InitialCreate'
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
 )
 BEGIN
     CREATE INDEX [IX_ActionHistories_ActionItemId_At] ON [ActionHistories] ([ActionItemId], [At]);
@@ -244,7 +311,7 @@ GO
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260921200555_InitialCreate'
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
 )
 BEGIN
     CREATE UNIQUE INDEX [IX_ActionOwners_ActionItemId_UserId] ON [ActionOwners] ([ActionItemId], [UserId]);
@@ -253,7 +320,7 @@ GO
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260921200555_InitialCreate'
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
 )
 BEGIN
     CREATE INDEX [IX_ActionOwners_UserId] ON [ActionOwners] ([UserId]);
@@ -262,7 +329,52 @@ GO
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260921200555_InitialCreate'
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
+)
+BEGIN
+    CREATE INDEX [IX_Actions_DueDate] ON [Actions] ([DueDate]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
+)
+BEGIN
+    CREATE INDEX [IX_Actions_MeetingId] ON [Actions] ([MeetingId]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
+)
+BEGIN
+    CREATE INDEX [IX_Actions_PillarId] ON [Actions] ([PillarId]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
+)
+BEGIN
+    CREATE INDEX [IX_Actions_ProjectId] ON [Actions] ([ProjectId]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
+)
+BEGIN
+    CREATE INDEX [IX_Actions_RelatedActionId] ON [Actions] ([RelatedActionId]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
 )
 BEGIN
     CREATE UNIQUE INDEX [IX_Actions_Serial] ON [Actions] ([Serial]);
@@ -271,7 +383,7 @@ GO
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260921200555_InitialCreate'
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
 )
 BEGIN
     CREATE INDEX [IX_Actions_Status] ON [Actions] ([Status]);
@@ -280,7 +392,7 @@ GO
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260921200555_InitialCreate'
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
 )
 BEGIN
     CREATE INDEX [IX_Actions_WorkItemId] ON [Actions] ([WorkItemId]);
@@ -289,7 +401,7 @@ GO
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260921200555_InitialCreate'
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
 )
 BEGIN
     CREATE UNIQUE INDEX [IX_ActionTags_ActionItemId_Tag] ON [ActionTags] ([ActionItemId], [Tag]);
@@ -298,7 +410,7 @@ GO
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260921200555_InitialCreate'
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
 )
 BEGIN
     CREATE UNIQUE INDEX [IX_ActionWeeks_ActionItemId_WeekIndex] ON [ActionWeeks] ([ActionItemId], [WeekIndex]);
@@ -307,7 +419,7 @@ GO
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260921200555_InitialCreate'
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
 )
 BEGIN
     CREATE INDEX [IX_Comments_ActionItemId] ON [Comments] ([ActionItemId]);
@@ -316,7 +428,7 @@ GO
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260921200555_InitialCreate'
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
 )
 BEGIN
     CREATE INDEX [IX_Comments_WorkItemId] ON [Comments] ([WorkItemId]);
@@ -325,7 +437,52 @@ GO
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260921200555_InitialCreate'
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_MeetingParticipants_MeetingId_UserId] ON [MeetingParticipants] ([MeetingId], [UserId]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
+)
+BEGIN
+    CREATE INDEX [IX_MeetingParticipants_UserId] ON [MeetingParticipants] ([UserId]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
+)
+BEGIN
+    CREATE INDEX [IX_Meetings_ChairUserId] ON [Meetings] ([ChairUserId]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
+)
+BEGIN
+    CREATE INDEX [IX_Meetings_Date] ON [Meetings] ([Date]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_Meetings_Serial] ON [Meetings] ([Serial]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
 )
 BEGIN
     CREATE UNIQUE INDEX [IX_Pillars_Name] ON [Pillars] ([Name]);
@@ -334,7 +491,7 @@ GO
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260921200555_InitialCreate'
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
 )
 BEGIN
     CREATE INDEX [IX_Projects_DigitalOwnerId] ON [Projects] ([DigitalOwnerId]);
@@ -343,7 +500,7 @@ GO
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260921200555_InitialCreate'
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
 )
 BEGIN
     CREATE INDEX [IX_Projects_PillarId] ON [Projects] ([PillarId]);
@@ -352,7 +509,7 @@ GO
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260921200555_InitialCreate'
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
 )
 BEGIN
     CREATE INDEX [IX_Projects_PmId] ON [Projects] ([PmId]);
@@ -361,7 +518,7 @@ GO
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260921200555_InitialCreate'
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
 )
 BEGIN
     CREATE INDEX [IX_Projects_Status] ON [Projects] ([Status]);
@@ -370,7 +527,16 @@ GO
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260921200555_InitialCreate'
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
+)
+BEGIN
+    CREATE INDEX [IX_ReminderLogs_SentAt] ON [ReminderLogs] ([SentAt]);
+END;
+GO
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
 )
 BEGIN
     CREATE UNIQUE INDEX [IX_Users_Email] ON [Users] ([Email]);
@@ -379,7 +545,7 @@ GO
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260921200555_InitialCreate'
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
 )
 BEGIN
     CREATE UNIQUE INDEX [IX_Users_Handle] ON [Users] ([Handle]);
@@ -388,7 +554,7 @@ GO
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260921200555_InitialCreate'
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
 )
 BEGIN
     CREATE INDEX [IX_WorkItems_ProjectId] ON [WorkItems] ([ProjectId]);
@@ -397,11 +563,11 @@ GO
 
 IF NOT EXISTS (
     SELECT * FROM [__EFMigrationsHistory]
-    WHERE [MigrationId] = N'20260921200555_InitialCreate'
+    WHERE [MigrationId] = N'20260921203318_InitialCreate'
 )
 BEGIN
     INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
-    VALUES (N'20260921200555_InitialCreate', N'8.0.11');
+    VALUES (N'20260921203318_InitialCreate', N'8.0.11');
 END;
 GO
 

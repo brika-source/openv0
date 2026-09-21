@@ -37,7 +37,7 @@
                     <dt class="col-sm-3">Department owner</dt><dd class="col-sm-3">@(project.DeptOwner ?? "—")</dd>
                     <dt class="col-sm-3">Digital owner</dt><dd class="col-sm-3"><partial name="_Handle" model="project.DigitalOwner" /></dd>
                     <dt class="col-sm-3">Project manager</dt><dd class="col-sm-3"><partial name="_Handle" model="project.Pm" /></dd>
-                    <dt class="col-sm-3">Savings type</dt><dd class="col-sm-3">@(project.SavingsType ?? "—")</dd>
+                    <dt class="col-sm-3">Value type</dt><dd class="col-sm-3"><span class="badge @project.SavingsType.BadgeClass()">@project.SavingsType.DisplayName()</span></dd>
                     <dt class="col-sm-3">Start</dt><dd class="col-sm-3">@(project.StartDate?.ToString("dd MMM yyyy") ?? "—")</dd>
                     <dt class="col-sm-3">Due</dt><dd class="col-sm-3">@(project.DueDate?.ToString("dd MMM yyyy") ?? "—")</dd>
                     <dt class="col-sm-3">Baseline</dt><dd class="col-sm-3">@(project.BaselineDate?.ToString("dd MMM yyyy") ?? "—")</dd>
@@ -100,7 +100,7 @@
                         <td class="text-nowrap"><partial name="_OwnerHandles" model="action" /></td>
                         <td>@(action.Quarter == Quarter.None ? "" : action.Quarter.DisplayName())</td>
                         <td><span class="badge @action.Priority.BadgeClass()">@action.Priority.DisplayName()</span></td>
-                        <td class="text-nowrap">@(action.ReviewDate?.ToString("dd MMM yy") ?? "—")</td>
+                        <td class="text-nowrap">@(action.DueDate?.ToString("dd MMM yy") ?? "—")</td>
                         <td><partial name="_StatusBadge" model="action.Status" /></td>
                     </tr>
                 }

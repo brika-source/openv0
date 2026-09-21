@@ -129,7 +129,7 @@ public class JsonExportSeeder(ApplicationDbContext db, IWebHostEnvironment env, 
                     CostAvoidance = Money(Str(pr, "costAvoidance")),
                     LabourHoursSaving = Money(Str(pr, "laborHoursSaving")),
                     ProductivityImprovement = Money(Str(pr, "productivityImprovement")),
-                    SavingsType = Str(pr, "savingsType"),
+                    SavingsType = SavingsTypeOf(Str(pr, "savingsType")),
                     CreatedAt = Stamp(Str(pr, "createdAt")) ?? DateTime.UtcNow
                 };
                 project.UpdatedAt = project.CreatedAt;
@@ -183,7 +183,7 @@ public class JsonExportSeeder(ApplicationDbContext db, IWebHostEnvironment env, 
             NextStep = Str(a, "nextStep"),
             Notes = Str(a, "notes"),
             CheckResult = Str(a, "checkResult"),
-            ReviewDate = Date(Str(a, "reviewDate")),
+            DueDate = Date(Str(a, "reviewDate")),
             CompletionDate = Date(Str(a, "completionDate")),
             CreatedAt = created,
             UpdatedAt = Stamp(Str(a, "updatedAt")) ?? created
@@ -274,6 +274,20 @@ public class JsonExportSeeder(ApplicationDbContext db, IWebHostEnvironment env, 
         if (text is null) return null;
         text = text.Replace(",", "").Replace("$", "").Replace("%", "").Trim();
         return decimal.TryParse(text, NumberStyles.Any, CultureInfo.InvariantCulture, out var d) ? d : null;
+    }
+
+    /// <summary>
+    /// The export keeps the savings type as free text ("hard", "Soft saving", ""), so it is
+    /// mapped onto the enum; anything unrecognised is left for someone to classify.
+    /// </summary>
+    private static SavingsType SavingsTypeOf(string? value)
+    {
+        var text = Blank(value)?.ToLowerInvariant();
+        if (text is null) return SavingsType.NotSet;
+        if (text.Contains("hard")) return SavingsType.Hard;
+        if (text.Contains("soft")) return SavingsType.Soft;
+        if (text.Contains("avoid")) return SavingsType.CostAvoidance;
+        return SavingsType.Other;
     }
 
     /// <summary>Parses export labels such as "Not Started" or "Bi-weekly" into enum members.</summary>

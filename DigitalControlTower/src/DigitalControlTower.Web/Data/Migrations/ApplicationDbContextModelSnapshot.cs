@@ -76,6 +76,13 @@ namespace DigitalControlTower.Web.Data.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateOnly?>("DueDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("MeetingId")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(400)
@@ -87,10 +94,23 @@ namespace DigitalControlTower.Web.Data.Migrations
                     b.Property<string>("Notes")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("Origin")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<string>("PillarId")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
                     b.Property<string>("Priority")
                         .IsRequired()
                         .HasMaxLength(32)
                         .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("ProjectId")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
 
                     b.Property<string>("Quarter")
                         .IsRequired()
@@ -102,7 +122,14 @@ namespace DigitalControlTower.Web.Data.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("nvarchar(32)");
 
-                    b.Property<DateOnly?>("ReviewDate")
+                    b.Property<string>("RelatedActionId")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime?>("ReminderSentAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateOnly?>("ReminderSentForDueDate")
                         .HasColumnType("date");
 
                     b.Property<string>("Serial")
@@ -131,11 +158,20 @@ namespace DigitalControlTower.Web.Data.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("WorkItemId")
-                        .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("nvarchar(64)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("DueDate");
+
+                    b.HasIndex("MeetingId");
+
+                    b.HasIndex("PillarId");
+
+                    b.HasIndex("ProjectId");
+
+                    b.HasIndex("RelatedActionId");
 
                     b.HasIndex("Serial")
                         .IsUnique();
@@ -303,6 +339,78 @@ namespace DigitalControlTower.Web.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("DigitalControlTower.Web.Models.Meeting", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("ChairUserId")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Minutes")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Serial")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChairUserId");
+
+                    b.HasIndex("Date");
+
+                    b.HasIndex("Serial")
+                        .IsUnique();
+
+                    b.ToTable("Meetings");
+                });
+
+            modelBuilder.Entity("DigitalControlTower.Web.Models.MeetingParticipant", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("MeetingId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("MeetingId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("MeetingParticipants");
+                });
+
             modelBuilder.Entity("DigitalControlTower.Web.Models.Pillar", b =>
                 {
                     b.Property<string>("Id")
@@ -378,8 +486,9 @@ namespace DigitalControlTower.Web.Data.Migrations
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("SavingsType")
-                        .HasMaxLength(64)
-                        .HasColumnType("nvarchar(64)");
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
 
                     b.Property<string>("Scope")
                         .HasMaxLength(32)
@@ -396,6 +505,9 @@ namespace DigitalControlTower.Web.Data.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("ValueNotes")
+                        .HasColumnType("nvarchar(max)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("DigitalOwnerId");
@@ -407,6 +519,49 @@ namespace DigitalControlTower.Web.Data.Migrations
                     b.HasIndex("Status");
 
                     b.ToTable("Projects");
+                });
+
+            modelBuilder.Entity("DigitalControlTower.Web.Models.ReminderLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ActionCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Handle")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime>("SentAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Serials")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<bool>("Succeeded")
+                        .HasColumnType("bit");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SentAt");
+
+                    b.ToTable("ReminderLogs");
                 });
 
             modelBuilder.Entity("DigitalControlTower.Web.Models.SerialCounter", b =>
@@ -478,11 +633,38 @@ namespace DigitalControlTower.Web.Data.Migrations
 
             modelBuilder.Entity("DigitalControlTower.Web.Models.ActionItem", b =>
                 {
+                    b.HasOne("DigitalControlTower.Web.Models.Meeting", "Meeting")
+                        .WithMany("Actions")
+                        .HasForeignKey("MeetingId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("DigitalControlTower.Web.Models.Pillar", "Pillar")
+                        .WithMany("Actions")
+                        .HasForeignKey("PillarId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("DigitalControlTower.Web.Models.Project", "Project")
+                        .WithMany("Actions")
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("DigitalControlTower.Web.Models.ActionItem", "RelatedAction")
+                        .WithMany()
+                        .HasForeignKey("RelatedActionId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
                     b.HasOne("DigitalControlTower.Web.Models.WorkItem", "WorkItem")
                         .WithMany("Actions")
                         .HasForeignKey("WorkItemId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("Meeting");
+
+                    b.Navigation("Pillar");
+
+                    b.Navigation("Project");
+
+                    b.Navigation("RelatedAction");
 
                     b.Navigation("WorkItem");
                 });
@@ -545,6 +727,35 @@ namespace DigitalControlTower.Web.Data.Migrations
                     b.Navigation("WorkItem");
                 });
 
+            modelBuilder.Entity("DigitalControlTower.Web.Models.Meeting", b =>
+                {
+                    b.HasOne("DigitalControlTower.Web.Models.AppUser", "Chair")
+                        .WithMany()
+                        .HasForeignKey("ChairUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Chair");
+                });
+
+            modelBuilder.Entity("DigitalControlTower.Web.Models.MeetingParticipant", b =>
+                {
+                    b.HasOne("DigitalControlTower.Web.Models.Meeting", "Meeting")
+                        .WithMany("Participants")
+                        .HasForeignKey("MeetingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DigitalControlTower.Web.Models.AppUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Meeting");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("DigitalControlTower.Web.Models.Project", b =>
                 {
                     b.HasOne("DigitalControlTower.Web.Models.AppUser", "DigitalOwner")
@@ -603,13 +814,24 @@ namespace DigitalControlTower.Web.Data.Migrations
                     b.Navigation("OwnedProjects");
                 });
 
+            modelBuilder.Entity("DigitalControlTower.Web.Models.Meeting", b =>
+                {
+                    b.Navigation("Actions");
+
+                    b.Navigation("Participants");
+                });
+
             modelBuilder.Entity("DigitalControlTower.Web.Models.Pillar", b =>
                 {
+                    b.Navigation("Actions");
+
                     b.Navigation("Projects");
                 });
 
             modelBuilder.Entity("DigitalControlTower.Web.Models.Project", b =>
                 {
+                    b.Navigation("Actions");
+
                     b.Navigation("Items");
                 });
 

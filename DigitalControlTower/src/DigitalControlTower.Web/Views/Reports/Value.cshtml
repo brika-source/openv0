@@ -1,0 +1,163 @@
+@model ValueReportViewModel
+@{
+    ViewData["Title"] = "Value added";
+    string Money(decimal value) => value.ToString("N0");
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h3 mb-0">Value added to the business</h1>
+        <div class="text-muted small">What the digital department delivered, by type, pillar and owner.</div>
+    </div>
+    <a class="btn btn-outline-secondary" asp-action="Gaps" asp-route-filter="@GapFilter.ProjectsWithoutValue">
+        Projects with no value captured
+    </a>
+</div>
+
+<form method="get" class="card card-body mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-3">
+            <label class="form-label small mb-1">Pillar</label>
+            <select class="form-select form-select-sm" name="pillarId" asp-items="ViewBag.Pillars as Microsoft.AspNetCore.Mvc.Rendering.SelectList">
+                <option value="">All pillars</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small mb-1">Value type</label>
+            <select class="form-select form-select-sm" name="type" asp-items="Html.GetEnumSelectList<SavingsType>()">
+                <option value="">All types</option>
+            </select>
+        </div>
+        <div class="col-md-3 form-check ms-2">
+            <input class="form-check-input" type="checkbox" name="withValueOnly" value="true" id="withValueOnly" checked="@Model.WithValueOnly" />
+            <label class="form-check-label small" for="withValueOnly">Only projects with a value captured</label>
+        </div>
+        <div class="col-md-2 d-grid"><button class="btn btn-sm btn-dark" type="submit">Apply</button></div>
+    </div>
+</form>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="card kpi h-100"><div class="card-body">
+            <div class="text-muted small text-uppercase">Financial value / year</div>
+            <div class="display-6">@Money(Model.TotalFinancial)</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card kpi h-100"><div class="card-body">
+            <div class="text-muted small text-uppercase">Labour hours saved</div>
+            <div class="display-6">@Money(Model.TotalHours)</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card kpi h-100"><div class="card-body">
+            <div class="text-muted small text-uppercase">Avg productivity gain</div>
+            <div class="display-6">@Model.AverageProductivity<span class="fs-6">%</span></div>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card kpi h-100"><div class="card-body">
+            <div class="text-muted small text-uppercase">Projects with value</div>
+            <div class="display-6">@Model.ProjectsWithValue<span class="fs-6">/@Model.ProjectCount</span></div>
+            @if (Model.ProjectsWithoutValue > 0)
+            {
+                <div class="small"><a asp-action="Gaps" asp-route-filter="@GapFilter.ProjectsWithoutValue" class="text-danger">
+                    @Model.ProjectsWithoutValue with nothing captured</a></div>
+            }
+        </div></div>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header fw-semibold">Hard vs soft</div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-7"><span class="badge bg-success">Hard saving</span></dt><dd class="col-5 text-end">@Money(Model.HardSaving)</dd>
+                    <dt class="col-7"><span class="badge bg-info text-dark">Soft saving</span></dt><dd class="col-5 text-end">@Money(Model.SoftSaving)</dd>
+                    <dt class="col-7"><span class="badge bg-primary">Cost avoidance</span></dt><dd class="col-5 text-end">@Money(Model.CostAvoidance)</dd>
+                    <dt class="col-7"><span class="badge bg-secondary">Other</span></dt><dd class="col-5 text-end">@Money(Model.OtherValue)</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header fw-semibold">By pillar</div>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead><tr><th>Pillar</th><th class="text-end">Value</th><th class="text-end">Hours</th><th style="width:25%"></th></tr></thead>
+                    <tbody>
+                    @foreach (var slice in Model.ByPillar)
+                    {
+                        <tr>
+                            <td>@slice.Label <span class="text-muted small">(@slice.Projects)</span></td>
+                            <td class="text-end">@Money(slice.Financial)</td>
+                            <td class="text-end">@Money(slice.Hours)</td>
+                            <td>
+                                <div class="progress" style="height:.6rem">
+                                    <div class="progress-bar bg-success"
+                                         style="width:@(slice.ShareOf(Model.TotalFinancial).ToString(System.Globalization.CultureInfo.InvariantCulture))%"></div>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header fw-semibold">By owner</div>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead><tr><th>Handle</th><th class="text-end">Projects</th><th class="text-end">Value</th><th class="text-end">Hours</th></tr></thead>
+                    <tbody>
+                    @foreach (var slice in Model.ByOwner)
+                    {
+                        <tr>
+                            <td><span class="handle">@slice.Label</span></td>
+                            <td class="text-end">@slice.Projects</td>
+                            <td class="text-end">@Money(slice.Financial)</td>
+                            <td class="text-end">@Money(slice.Hours)</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header fw-semibold">Projects</div>
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0">
+            <thead><tr>
+                <th>Project</th><th>Pillar</th><th>Owner</th><th>Type</th>
+                <th class="text-end">Value / year</th><th class="text-end">Hours</th><th class="text-end">Productivity</th><th>Status</th>
+            </tr></thead>
+            <tbody>
+            @if (Model.Projects.Count == 0)
+            {
+                <tr><td colspan="8" class="text-center text-muted py-4">No projects match this filter.</td></tr>
+            }
+            @foreach (var project in Model.Projects)
+            {
+                <tr class="@(project.HasValue ? "" : "table-warning")">
+                    <td><a asp-controller="Projects" asp-action="Details" asp-route-id="@project.Id">@project.Name</a></td>
+                    <td class="small text-muted">@project.Pillar?.Name</td>
+                    <td><partial name="_Handle" model="@(project.DigitalOwner ?? project.Pm)" /></td>
+                    <td><span class="badge @project.SavingsType.BadgeClass()">@project.SavingsType.DisplayName()</span></td>
+                    <td class="text-end">@(project.CostAvoidance is null ? "—" : Money(project.CostAvoidance.Value))</td>
+                    <td class="text-end">@(project.LabourHoursSaving is null ? "—" : Money(project.LabourHoursSaving.Value))</td>
+                    <td class="text-end">@(project.ProductivityImprovement is null ? "—" : project.ProductivityImprovement.Value.ToString("N1") + "%")</td>
+                    <td><span class="badge @project.Status.BadgeClass()">@project.Status.DisplayName()</span></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

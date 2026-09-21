@@ -15,13 +15,15 @@ public class ActionsController(ApplicationDbContext db, SerialService serials, I
         nameof(ActionItem.Status) + "," + nameof(ActionItem.Priority) + "," + nameof(ActionItem.Quarter) + "," +
         nameof(ActionItem.Recurrence) + "," + nameof(ActionItem.Source) + "," + nameof(ActionItem.Target) + "," +
         nameof(ActionItem.SuccessCriteria) + "," + nameof(ActionItem.NextStep) + "," + nameof(ActionItem.Notes) + "," +
-        nameof(ActionItem.CheckResult) + "," + nameof(ActionItem.ReviewDate) + "," + nameof(ActionItem.CompletionDate);
+        nameof(ActionItem.CheckResult) + "," + nameof(ActionItem.DueDate) + "," + nameof(ActionItem.CompletionDate);
 
     public async Task<IActionResult> Index(ActionsIndexViewModel filter, CancellationToken ct)
     {
         var query = db.Actions
             .Include(a => a.Owners).ThenInclude(o => o.User)
-            .Include(a => a.WorkItem)!.ThenInclude(i => i!.Project)!.ThenInclude(p => p!.Pillar)
+            .Include(a => a.Pillar)
+            .Include(a => a.Project)
+            .Include(a => a.WorkItem)
             .AsNoTracking()
             .AsQueryable();
 
@@ -33,15 +35,25 @@ public class ActionsController(ApplicationDbContext db, SerialService serials, I
                 a.Serial.Contains(term) ||
                 (a.Notes != null && a.Notes.Contains(term)) ||
                 a.Owners.Any(o => o.User!.Handle.Contains(term) || o.User!.Name.Contains(term)) ||
-                a.WorkItem!.Name.Contains(term) ||
-                a.WorkItem!.Project!.Name.Contains(term));
+                (a.WorkItem != null && a.WorkItem.Name.Contains(term)) ||
+                (a.Project != null && a.Project.Name.Contains(term)));
         }
 
         if (!string.IsNullOrWhiteSpace(filter.PillarId))
-            query = query.Where(a => a.WorkItem!.Project!.PillarId == filter.PillarId);
+            query = query.Where(a => a.PillarId == filter.PillarId);
 
         if (!string.IsNullOrWhiteSpace(filter.ProjectId))
-            query = query.Where(a => a.WorkItem!.ProjectId == filter.ProjectId);
+            query = query.Where(a => a.ProjectId == filter.ProjectId);
+
+        if (filter.Origin is { } origin) query = query.Where(a => a.Origin == origin);
+        if (filter.WithoutDueDate) query = query.Where(a => a.DueDate == null);
+        if (filter.WithoutOwner) query = query.Where(a => !a.Owners.Any());
+        if (filter.OverdueOnly)
+        {
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            query = query.Where(a => a.DueDate != null && a.DueDate < today
+                                     && a.Status != ActionStatus.Complete && a.Status != ActionStatus.Cancelled);
+        }
 
         if (filter.Status is { } status) query = query.Where(a => a.Status == status);
         if (filter.Priority is { } priority) query = query.Where(a => a.Priority == priority);
@@ -72,7 +84,11 @@ public class ActionsController(ApplicationDbContext db, SerialService serials, I
     {
         var action = await db.Actions
             .Include(a => a.Owners).ThenInclude(o => o.User)
+            .Include(a => a.Pillar)
+            .Include(a => a.Project)
             .Include(a => a.WorkItem)!.ThenInclude(i => i!.Project)!.ThenInclude(p => p!.Pillar)
+            .Include(a => a.Meeting)
+            .Include(a => a.RelatedAction)
             .Include(a => a.Weeks)
             .Include(a => a.Tags)
             .Include(a => a.Comments)
@@ -103,9 +119,7 @@ public class ActionsController(ApplicationDbContext db, SerialService serials, I
         // Serial is issued by the server, so it is never posted and must not be validated.
         ModelState.Remove(nameof(ActionItem.Serial));
 
-        if (!await db.WorkItems.AnyAsync(i => i.Id == input.WorkItemId, ct))
-            ModelState.AddModelError(nameof(ActionItem.WorkItemId), "Choose the work item this action belongs to.");
-
+        await ValidateContextAsync(input, ct);
         var owners = await ResolveOwnersAsync(ownerIds, ct);
 
         if (!ModelState.IsValid)
@@ -118,6 +132,7 @@ public class ActionsController(ApplicationDbContext db, SerialService serials, I
 
         input.Id = $"action-{Guid.NewGuid():N}"[..18];
         input.Serial = await serials.NextActionSerialAsync(ct);
+        if (string.IsNullOrWhiteSpace(input.WorkItemId)) input.WorkItemId = null;
         if (input.Status == ActionStatus.Complete && input.CompletionDate is null)
             input.CompletionDate = DateOnly.FromDateTime(DateTime.UtcNow);
 
@@ -162,9 +177,7 @@ public class ActionsController(ApplicationDbContext db, SerialService serials, I
         // Serial stays as issued, so the form does not post it.
         ModelState.Remove(nameof(ActionItem.Serial));
 
-        if (!await db.WorkItems.AnyAsync(i => i.Id == input.WorkItemId, ct))
-            ModelState.AddModelError(nameof(ActionItem.WorkItemId), "Choose the work item this action belongs to.");
-
+        await ValidateContextAsync(input, ct);
         var owners = await ResolveOwnersAsync(ownerIds, ct);
 
         if (!ModelState.IsValid)
@@ -176,7 +189,7 @@ public class ActionsController(ApplicationDbContext db, SerialService serials, I
             return View(input);
         }
 
-        action.WorkItemId = input.WorkItemId;
+        action.WorkItemId = string.IsNullOrWhiteSpace(input.WorkItemId) ? null : input.WorkItemId;
         action.Name = input.Name;
         action.Status = input.Status;
         action.Priority = input.Priority;
@@ -188,7 +201,7 @@ public class ActionsController(ApplicationDbContext db, SerialService serials, I
         action.NextStep = input.NextStep;
         action.Notes = input.Notes;
         action.CheckResult = input.CheckResult;
-        action.ReviewDate = input.ReviewDate;
+        action.DueDate = input.DueDate;
         action.CompletionDate = input.CompletionDate;
 
         // Completing an action stamps the completion date when the user left it empty.
@@ -247,7 +260,9 @@ public class ActionsController(ApplicationDbContext db, SerialService serials, I
     {
         var action = await db.Actions
             .Include(a => a.Owners).ThenInclude(o => o.User)
-            .Include(a => a.WorkItem)!.ThenInclude(i => i!.Project)
+            .Include(a => a.Pillar)
+            .Include(a => a.Project)
+            .Include(a => a.WorkItem)
             .AsNoTracking()
             .FirstOrDefaultAsync(a => a.Id == id, ct);
 
@@ -261,10 +276,33 @@ public class ActionsController(ApplicationDbContext db, SerialService serials, I
         var action = await db.Actions.FirstOrDefaultAsync(a => a.Id == id, ct);
         if (action is null) return NotFound();
 
+        // Another action may follow on from this one. That link cannot cascade (it points
+        // back at the same table), so it is cleared before the row goes.
+        await db.Actions.Where(a => a.RelatedActionId == id)
+            .ExecuteUpdateAsync(set => set.SetProperty(a => a.RelatedActionId, (string?)null), ct);
+
         db.Actions.Remove(action);
         await db.SaveChangesAsync(ct);
         TempData["Success"] = $"Action {action.Serial} deleted.";
         return RedirectToAction(nameof(Index));
+    }
+
+    /// <summary>
+    /// A plan action must sit under a work item; an action raised in a meeting may instead
+    /// be attached to a project or a pillar, or to nothing at all while it is being placed.
+    /// </summary>
+    private async Task ValidateContextAsync(ActionItem input, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(input.WorkItemId))
+        {
+            ModelState.Remove(nameof(ActionItem.WorkItemId));
+            if (input.Origin == ActionOrigin.Plan)
+                ModelState.AddModelError(nameof(ActionItem.WorkItemId), "Choose the work item this action belongs to.");
+            return;
+        }
+
+        if (!await db.WorkItems.AnyAsync(i => i.Id == input.WorkItemId, ct))
+            ModelState.AddModelError(nameof(ActionItem.WorkItemId), "Choose the work item this action belongs to.");
     }
 
     /// <summary>Looks up the posted owner ids, ignoring blanks and duplicates.</summary>

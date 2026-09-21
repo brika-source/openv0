@@ -55,7 +55,8 @@ public class Project
     [DataType(DataType.Date), Display(Name = "Actual completion date")]
     public DateOnly? ActualCompletionDate { get; set; }
 
-    [Column(TypeName = "decimal(18,2)"), Display(Name = "Cost avoidance")]
+    /// <summary>Annual financial value, classified hard/soft/other by <see cref="SavingsType"/>.</summary>
+    [Column(TypeName = "decimal(18,2)"), Display(Name = "Financial value per year")]
     public decimal? CostAvoidance { get; set; }
 
     [Column(TypeName = "decimal(18,2)"), Display(Name = "Labour hours saving")]
@@ -64,8 +65,11 @@ public class Project
     [Column(TypeName = "decimal(18,2)"), Display(Name = "Productivity improvement %")]
     public decimal? ProductivityImprovement { get; set; }
 
-    [StringLength(64), Display(Name = "Savings type")]
-    public string? SavingsType { get; set; }
+    [Display(Name = "Value type")]
+    public SavingsType SavingsType { get; set; } = SavingsType.NotSet;
+
+    [Display(Name = "How the value was calculated")]
+    public string? ValueNotes { get; set; }
 
     [Display(Name = "Created")]
     public DateTime CreatedAt { get; set; }
@@ -74,4 +78,15 @@ public class Project
     public DateTime UpdatedAt { get; set; }
 
     public ICollection<WorkItem> Items { get; set; } = new List<WorkItem>();
+
+    /// <summary>Actions rolled up to this project, including ones raised in a meeting.</summary>
+    public ICollection<ActionItem> Actions { get; set; } = new List<ActionItem>();
+
+    /// <summary>True when nobody has recorded any benefit for this project yet.</summary>
+    [NotMapped]
+    public bool HasValue =>
+        SavingsType != SavingsType.NotSet ||
+        (CostAvoidance ?? 0) != 0 ||
+        (LabourHoursSaving ?? 0) != 0 ||
+        (ProductivityImprovement ?? 0) != 0;
 }

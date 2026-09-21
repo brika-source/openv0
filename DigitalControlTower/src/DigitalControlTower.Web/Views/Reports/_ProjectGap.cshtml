@@ -1,0 +1,31 @@
+@model DigitalControlTower.Web.Views.Reports.ProjectGapModel
+
+<div class="card mb-3">
+    <div class="card-header">
+        <span class="fw-semibold">@Model.Title</span>
+        <span class="badge bg-secondary">@Model.Projects.Count</span>
+        <div class="small text-muted">@Model.Hint</div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0 align-middle">
+            <thead><tr><th>Project</th><th>Pillar</th><th>Owner</th><th>PM</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+            @if (Model.Projects.Count == 0)
+            {
+                <tr><td colspan="6" class="text-muted text-center py-3">Nothing missing here.</td></tr>
+            }
+            @foreach (var project in Model.Projects)
+            {
+                <tr>
+                    <td><a asp-controller="Projects" asp-action="Details" asp-route-id="@project.Id">@project.Name</a></td>
+                    <td class="small text-muted">@project.Pillar?.Name</td>
+                    <td><partial name="_Handle" model="project.DigitalOwner" /></td>
+                    <td><partial name="_Handle" model="project.Pm" /></td>
+                    <td><span class="badge @project.Status.BadgeClass()">@project.Status.DisplayName()</span></td>
+                    <td class="text-end"><a class="btn btn-sm btn-outline-secondary" asp-controller="Projects" asp-action="Edit" asp-route-id="@project.Id">Fix</a></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -106,6 +106,10 @@ public class UsersController(ApplicationDbContext db) : Controller
         foreach (var project in user.OwnedProjects) project.DigitalOwnerId = null;
         foreach (var project in user.ManagedProjects) project.PmId = null;
         db.ActionOwners.RemoveRange(await db.ActionOwners.Where(o => o.UserId == id).ToListAsync(ct));
+        db.MeetingParticipants.RemoveRange(await db.MeetingParticipants.Where(p => p.UserId == id).ToListAsync(ct));
+
+        foreach (var meeting in await db.Meetings.Where(m => m.ChairUserId == id).ToListAsync(ct))
+            meeting.ChairUserId = null;
 
         db.Users.Remove(user);
         await db.SaveChangesAsync(ct);

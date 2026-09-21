@@ -11,9 +11,16 @@
     <div class="col-md-4">
         <label asp-for="WorkItemId" class="form-label">Pillar / project / work item</label>
         <select asp-for="WorkItemId" class="form-select" asp-items="ViewBag.WorkItems as Microsoft.AspNetCore.Mvc.Rendering.SelectList">
-            <option value="">— choose —</option>
+            <option value="">— none (meeting action) —</option>
         </select>
         <span asp-validation-for="WorkItemId" class="text-danger small"></span>
+        @if (Model.Origin == ActionOrigin.Meeting)
+        {
+            <div class="form-text">
+                Raised in a meeting@(Model.Meeting is null ? "" : $" ({Model.Meeting.Serial}, {Model.Meeting.Date:d MMM yyyy})").
+                Pick a work item to file it under the 90-day plan.
+            </div>
+        }
     </div>
 
     <div class="col-md-3">
@@ -45,8 +52,8 @@
         <input asp-for="Source" class="form-control" />
     </div>
     <div class="col-md-3">
-        <label asp-for="ReviewDate" class="form-label"></label>
-        <input asp-for="ReviewDate" class="form-control" type="date" />
+        <label asp-for="DueDate" class="form-label"></label>
+        <input asp-for="DueDate" class="form-control" type="date" />
     </div>
     <div class="col-md-3">
         <label asp-for="CompletionDate" class="form-label"></label>

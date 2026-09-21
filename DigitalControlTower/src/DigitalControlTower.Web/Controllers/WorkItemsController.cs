@@ -131,11 +131,19 @@ public class WorkItemsController(ApplicationDbContext db, ICurrentUser currentUs
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteConfirmed(string id, CancellationToken ct)
     {
-        var item = await db.WorkItems.Include(i => i.Comments).FirstOrDefaultAsync(i => i.Id == id, ct);
+        var item = await db.WorkItems
+            .Include(i => i.Comments)
+            .Include(i => i.Actions)
+            .FirstOrDefaultAsync(i => i.Id == id, ct);
         if (item is null) return NotFound();
 
         var projectId = item.ProjectId;
+        var actionIds = item.Actions.Select(a => a.Id).ToList();
+        await db.Actions.Where(a => a.RelatedActionId != null && actionIds.Contains(a.RelatedActionId))
+            .ExecuteUpdateAsync(set => set.SetProperty(a => a.RelatedActionId, (string?)null), ct);
+
         db.Comments.RemoveRange(item.Comments);
+        db.Actions.RemoveRange(item.Actions);
         db.WorkItems.Remove(item);
         await db.SaveChangesAsync(ct);
 

@@ -8,9 +8,30 @@
 
 <nav aria-label="breadcrumb">
     <ol class="breadcrumb small">
-        <li class="breadcrumb-item"><a asp-controller="Projects" asp-action="Index" asp-route-pillarId="@Model.WorkItem?.Project?.PillarId">@Model.WorkItem?.Project?.Pillar?.Name</a></li>
-        <li class="breadcrumb-item"><a asp-controller="Projects" asp-action="Details" asp-route-id="@Model.WorkItem?.ProjectId">@Model.WorkItem?.Project?.Name</a></li>
-        <li class="breadcrumb-item"><a asp-controller="WorkItems" asp-action="Details" asp-route-id="@Model.WorkItemId">@Model.WorkItem?.Name</a></li>
+        @if (Model.PillarId is not null)
+        {
+            <li class="breadcrumb-item">
+                <a asp-controller="Projects" asp-action="Index" asp-route-pillarId="@Model.PillarId">@Model.Pillar?.Name</a>
+            </li>
+        }
+        @if (Model.ProjectId is not null)
+        {
+            <li class="breadcrumb-item">
+                <a asp-controller="Projects" asp-action="Details" asp-route-id="@Model.ProjectId">@Model.Project?.Name</a>
+            </li>
+        }
+        @if (Model.WorkItemId is not null)
+        {
+            <li class="breadcrumb-item">
+                <a asp-controller="WorkItems" asp-action="Details" asp-route-id="@Model.WorkItemId">@Model.WorkItem?.Name</a>
+            </li>
+        }
+        @if (Model.Meeting is not null)
+        {
+            <li class="breadcrumb-item">
+                <a asp-controller="Meetings" asp-action="Details" asp-route-id="@Model.MeetingId">@Model.Meeting.Serial</a>
+            </li>
+        }
         <li class="breadcrumb-item active">@Model.Serial</li>
     </ol>
 </nav>
@@ -40,14 +61,33 @@
                 <dl class="row mb-0 small">
                     <dt class="col-sm-3">Owners</dt><dd class="col-sm-3"><partial name="_OwnerHandles" model="Model" /></dd>
                     <dt class="col-sm-3">Source</dt><dd class="col-sm-3">@Model.Source</dd>
+                    <dt class="col-sm-3">Origin</dt>
+                    <dd class="col-sm-3">
+                        @Model.Origin.DisplayName()
+                        @if (Model.Meeting is not null)
+                        {
+                            <a asp-controller="Meetings" asp-action="Details" asp-route-id="@Model.MeetingId">@Model.Meeting.Serial</a>
+                        }
+                    </dd>
                     <dt class="col-sm-3">Recurrence</dt><dd class="col-sm-3">@Model.Recurrence.DisplayName()</dd>
-                    <dt class="col-sm-3">Review date</dt><dd class="col-sm-3">@(Model.ReviewDate?.ToString("dd MMM yyyy") ?? "—")</dd>
+                    <dt class="col-sm-3">Review date</dt><dd class="col-sm-3">@(Model.DueDate?.ToString("dd MMM yyyy") ?? "—")</dd>
                     <dt class="col-sm-3">Completion date</dt><dd class="col-sm-3">@(Model.CompletionDate?.ToString("dd MMM yyyy") ?? "—")</dd>
                     <dt class="col-sm-3">Updated</dt><dd class="col-sm-3">@Model.UpdatedAt.ToString("dd MMM yyyy HH:mm")</dd>
                     <dt class="col-sm-3">Target</dt><dd class="col-sm-9">@(Model.Target ?? "—")</dd>
                     <dt class="col-sm-3">Success criteria</dt><dd class="col-sm-9">@(Model.SuccessCriteria ?? "—")</dd>
                     <dt class="col-sm-3">Next step</dt><dd class="col-sm-9">@(Model.NextStep ?? "—")</dd>
                     <dt class="col-sm-3">Check result</dt><dd class="col-sm-9">@(Model.CheckResult ?? "—")</dd>
+                    <dt class="col-sm-3">Related action</dt>
+                    <dd class="col-sm-9">
+                        @if (Model.RelatedAction is not null)
+                        {
+                            <a asp-action="Details" asp-route-id="@Model.RelatedActionId">@Model.RelatedAction.Serial — @Model.RelatedAction.Name</a>
+                        }
+                        else
+                        {
+                            <span>—</span>
+                        }
+                    </dd>
                     <dt class="col-sm-3">Notes</dt><dd class="col-sm-9" style="white-space: pre-wrap">@(Model.Notes ?? "—")</dd>
                 </dl>
             </div>

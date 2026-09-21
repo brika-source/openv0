@@ -30,6 +30,19 @@ PROJECT_STATUS = {"notstarted": "NotStarted", "active": "Active", "onhold": "OnH
 PROJECT_SCOPE = {"local": "Local", "regional": "Regional", "global": "Global"}
 WEEK_MARK = {"t": "T", "r": "R", "a": "A"}
 
+# The export keeps the savings type as free text; the app stores it as an enum.
+def savings_type(value):
+    text = (value or "").strip().lower()
+    if not text:
+        return "NotSet"
+    if "hard" in text:
+        return "Hard"
+    if "soft" in text:
+        return "Soft"
+    if "avoid" in text:
+        return "CostAvoidance"
+    return "Other"
+
 # Spellings seen in the export that mean a person already on file.
 KNOWN_ALIASES = {
     "mohamed ibrahim": "mostafaabdellatif.mi",
@@ -262,7 +275,7 @@ def main(source, target):
                 date(project.get("actualCompletionDate")),
                 money(project.get("costAvoidance")), money(project.get("laborHoursSaving")),
                 money(project.get("productivityImprovement")),
-                q(project.get("savingsType")), created, created,
+                q(savings_type(project.get("savingsType"))), "NULL", created, created,
             ])
 
             for item_order, item in enumerate(project.get("items", [])):
@@ -282,7 +295,7 @@ def main(source, target):
                     aid = action.get("id") or ""
                     created = stamp(action.get("createdAt"))
                     actions.append([
-                        q(aid), q(iid), qs(action.get("serial"), aid),
+                        q(aid), q(iid), q(prid), q(pid), q("Plan"), qs(action.get("serial"), aid),
                         qs(action.get("name"), "Unnamed action"),
                         q(enum(action.get("status"), ACTION_STATUS, "NotStarted")),
                         q(enum(action.get("priority"), PRIORITY, "Medium")),
@@ -354,12 +367,12 @@ def main(source, target):
         "Id", "PillarId", "Name", "Scope", "DeptOwner", "DigitalOwnerId", "PmId", "Status",
         "StartDate", "DueDate", "BaselineDate", "ImplementationDate", "ActualCompletionDate",
         "CostAvoidance", "LabourHoursSaving", "ProductivityImprovement", "SavingsType",
-        "CreatedAt", "UpdatedAt"], projects)
+        "ValueNotes", "CreatedAt", "UpdatedAt"], projects)
     insert(out, "WorkItems", ["Id", "ProjectId", "Name", "Notes", "SortOrder"], items)
     insert(out, "Actions", [
-        "Id", "WorkItemId", "Serial", "Name", "Status", "Priority", "Quarter",
-        "Recurrence", "Source", "Target", "SuccessCriteria", "NextStep", "Notes", "CheckResult",
-        "ReviewDate", "CompletionDate", "CreatedAt", "UpdatedAt"], actions)
+        "Id", "WorkItemId", "ProjectId", "PillarId", "Origin", "Serial", "Name", "Status", "Priority",
+        "Quarter", "Recurrence", "Source", "Target", "SuccessCriteria", "NextStep", "Notes", "CheckResult",
+        "DueDate", "CompletionDate", "CreatedAt", "UpdatedAt"], actions)
     insert(out, "ActionOwners", ["ActionItemId", "UserId"], owners)
     insert(out, "ActionWeeks", ["ActionItemId", "WeekIndex", "Mark"], weeks)
     insert(out, "ActionTags", ["ActionItemId", "Tag"], tags)

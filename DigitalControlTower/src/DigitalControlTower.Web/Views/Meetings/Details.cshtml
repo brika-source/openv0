@@ -1,0 +1,201 @@
+@model MeetingViewModel
+@{
+    var meeting = Model.Meeting;
+    ViewData["Title"] = $"{meeting.Title} — {meeting.Date:dd MMM yyyy}";
+    var today = DateOnly.FromDateTime(DateTime.Today);
+}
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h1 class="h3 mb-1">@meeting.Title</h1>
+        <div class="text-muted small">
+            <span class="badge bg-light text-dark border">@meeting.Serial</span>
+            @meeting.Date.ToString("dddd d MMMM yyyy")
+            @if (meeting.Date == today) { <span class="badge bg-success">today</span> }
+            &middot; @Model.Actions.Count action(s), @Model.OpenCount open
+            @if (Model.OverdueCount > 0) { <span class="badge bg-danger">@Model.OverdueCount overdue</span> }
+        </div>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" asp-action="Index">All meetings</a>
+        <a class="btn btn-outline-secondary" asp-action="Today">Today's meeting</a>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-4">
+        <form asp-action="Save" method="post" class="card card-body mb-3">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="@meeting.Id" />
+
+            <div class="mb-3">
+                <label class="form-label">Title</label>
+                <input class="form-control" name="title" value="@meeting.Title" />
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Meeting date</label>
+                <input class="form-control" type="date" name="date" value="@meeting.Date.ToString("yyyy-MM-dd")" />
+                <div class="form-text">Change the date to move this meeting; use "Open a date" below for another day.</div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Chaired by</label>
+                <select class="form-select" name="chairUserId" asp-items="Model.Chairs">
+                    <option value="">— not set —</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Participants</label>
+                <select class="form-select" name="participantIds" multiple size="6" asp-items="Model.People"></select>
+                <div class="form-text">Ctrl/cmd-click to pick several. Handles come from the Users list.</div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Minutes</label>
+                <textarea class="form-control" name="minutes" rows="10"
+                          placeholder="Decisions, discussion, follow-ups…">@meeting.Minutes</textarea>
+            </div>
+            <button class="btn btn-primary" type="submit">Save meeting</button>
+        </form>
+
+        <form class="card card-body mb-3" asp-action="Open" method="get">
+            <label class="form-label">Open a date</label>
+            <div class="input-group">
+                <input class="form-control" type="date" name="date" value="@today.ToString("yyyy-MM-dd")" />
+                <button class="btn btn-outline-secondary" type="submit">Open</button>
+            </div>
+            <div class="form-text">A meeting is created for that date if there is not one yet.</div>
+        </form>
+
+        <form asp-action="Delete" method="post" onsubmit="return confirm('Delete this meeting? Its actions stay in the plan.');">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="@meeting.Id" />
+            <button class="btn btn-outline-danger btn-sm" type="submit">Delete meeting</button>
+        </form>
+    </div>
+
+    <div class="col-lg-8">
+        <div class="card mb-3">
+            <div class="card-header fw-semibold">Add an action</div>
+            <form asp-action="AddAction" method="post" class="card-body">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="id" value="@meeting.Id" />
+
+                <div class="row g-2">
+                    <div class="col-md-12">
+                        <label class="form-label">Action</label>
+                        <input class="form-control" name="name" required placeholder="What was agreed?" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Owners</label>
+                        <select class="form-select" name="ownerIds" multiple size="4" asp-items="Model.People"></select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Due date</label>
+                        <input class="form-control" type="date" name="dueDate" />
+                        <div class="form-text">The owner is reminded two days before.</div>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Priority</label>
+                        <select class="form-select" name="priority" asp-items="Html.GetEnumSelectList<Priority>()">
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Status</label>
+                        <input class="form-control" value="Not Started" disabled />
+                        <div class="form-text">Always starts here.</div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label">Relates to</label>
+                        <select class="form-select" name="linkType" id="linkType">
+                            <option value="">Nothing yet</option>
+                            <option value="pillar">A pillar</option>
+                            <option value="project">A project</option>
+                            <option value="workItem">A 90-day work item</option>
+                            <option value="action">Another action</option>
+                        </select>
+                    </div>
+                    <div class="col-md-9">
+                        <label class="form-label">&nbsp;</label>
+                        <select class="form-select link-target" data-for="pillar" name="pillarId" asp-items="Model.Pillars">
+                            <option value="">— choose a pillar —</option>
+                        </select>
+                        <select class="form-select link-target" data-for="project" name="projectId" asp-items="Model.Projects">
+                            <option value="">— choose a project —</option>
+                        </select>
+                        <select class="form-select link-target" data-for="workItem" name="workItemId"
+                                asp-items="ViewBag.WorkItems as Microsoft.AspNetCore.Mvc.Rendering.SelectList">
+                            <option value="">— choose a work item —</option>
+                        </select>
+                        <select class="form-select link-target" data-for="action" name="relatedActionId" asp-items="Model.PlanActions">
+                            <option value="">— choose an action —</option>
+                        </select>
+                        <div class="form-text link-target" data-for="">
+                            Link it later from the action page if it is not clear yet.
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Notes</label>
+                        <textarea class="form-control" name="notes" rows="2"></textarea>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary mt-3" type="submit">Add action</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <div class="card-header fw-semibold">Actions from this meeting</div>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0">
+                    <thead><tr><th>Serial</th><th>Action</th><th>Owners</th><th>Due</th><th>Relates to</th><th>Status</th></tr></thead>
+                    <tbody>
+                    @if (Model.Actions.Count == 0)
+                    {
+                        <tr><td colspan="6" class="text-muted text-center py-3">Nothing raised yet.</td></tr>
+                    }
+                    @foreach (var action in Model.Actions)
+                    {
+                        <tr>
+                            <td class="text-nowrap"><a asp-controller="Actions" asp-action="Details" asp-route-id="@action.Id">@action.Serial</a></td>
+                            <td>@action.Name</td>
+                            <td><partial name="_OwnerHandles" model="action" /></td>
+                            <td class="text-nowrap @(action.IsOverdue ? "text-danger fw-semibold" : "")">
+                                @(action.DueDate?.ToString("dd MMM yy") ?? "—")
+                            </td>
+                            <td class="small text-muted">
+                                @if (action.RelatedAction is not null)
+                                {
+                                    <span>@action.RelatedAction.Serial</span>
+                                }
+                                else
+                                {
+                                    @(string.IsNullOrEmpty(action.ContextPath) ? "—" : action.ContextPath)
+                                }
+                            </td>
+                            <td><partial name="_StatusBadge" model="action.Status" /></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+    // Show only the picker that matches the chosen link type.
+    (function () {
+        var type = document.getElementById('linkType');
+        var targets = document.querySelectorAll('.link-target');
+        function sync() {
+            targets.forEach(function (el) {
+                el.style.display = el.dataset.for === type.value ? '' : 'none';
+            });
+        }
+        type.addEventListener('change', sync);
+        sync();
+    })();
+</script>
+}

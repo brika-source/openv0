@@ -56,6 +56,16 @@ public enum ProjectScope
     [Display(Name = "Global")] Global = 2
 }
 
+/// <summary>How a project's benefit counts towards the department's value.</summary>
+public enum SavingsType
+{
+    [Display(Name = "Not captured")] NotSet = 0,
+    [Display(Name = "Hard saving")] Hard = 1,
+    [Display(Name = "Soft saving")] Soft = 2,
+    [Display(Name = "Cost avoidance")] CostAvoidance = 3,
+    [Display(Name = "Other")] Other = 4
+}
+
 /// <summary>Mark placed in a week cell of the 14-week tracking grid.</summary>
 public enum WeekMark
 {

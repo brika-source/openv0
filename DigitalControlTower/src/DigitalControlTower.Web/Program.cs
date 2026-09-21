@@ -10,6 +10,13 @@ builder.Services.AddScoped<ICurrentUser, HttpContextCurrentUser>();
 builder.Services.AddScoped<SerialService>();
 builder.Services.AddScoped<JsonExportSeeder>();
 
+// Reminders: SMTP settings and the daily "due in two days" sweep.
+builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection(EmailOptions.Section));
+builder.Services.Configure<ReminderOptions>(builder.Configuration.GetSection(ReminderOptions.Section));
+builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+builder.Services.AddScoped<ReminderService>();
+builder.Services.AddHostedService<ReminderBackgroundService>();
+
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.");
 

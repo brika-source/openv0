@@ -1,0 +1,46 @@
+@model List<MeetingListRow>
+@{ ViewData["Title"] = "Meetings action plan"; }
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h3 mb-0">Meetings action plan</h1>
+        <div class="text-muted small">Every digital team meeting, its participants, minutes and the actions it raised.</div>
+    </div>
+    <a class="btn btn-primary" asp-action="Today">Open today's meeting</a>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0">
+            <thead><tr>
+                <th>Serial</th><th>Date</th><th>Title</th><th>Chair</th><th>Participants</th>
+                <th class="text-end">Actions</th><th class="text-end">Open</th>
+            </tr></thead>
+            <tbody>
+            @if (Model.Count == 0)
+            {
+                <tr><td colspan="7" class="text-center text-muted py-4">
+                    No meetings yet. <a asp-action="Today">Open today's</a> to start one.
+                </td></tr>
+            }
+            @foreach (var row in Model)
+            {
+                <tr>
+                    <td class="text-nowrap"><a asp-action="Details" asp-route-id="@row.Meeting.Id">@row.Meeting.Serial</a></td>
+                    <td class="text-nowrap">@row.Meeting.Date.ToString("ddd d MMM yyyy")</td>
+                    <td>@row.Meeting.Title</td>
+                    <td><partial name="_Handle" model="row.Meeting.Chair" /></td>
+                    <td class="small">
+                        @foreach (var person in row.Meeting.Participants.Select(p => p.User).Where(u => u is not null).OrderBy(u => u!.Handle))
+                        {
+                            <span class="handle" title="@person!.Name">@person.Handle</span>
+                        }
+                    </td>
+                    <td class="text-end">@row.ActionCount</td>
+                    <td class="text-end">@row.OpenCount</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

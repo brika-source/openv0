@@ -44,7 +44,7 @@
                             <td class="text-nowrap"><a asp-controller="Actions" asp-action="Details" asp-route-id="@action.Id">@action.Serial</a></td>
                             <td>@action.Name</td>
                             <td class="text-nowrap"><partial name="_OwnerHandles" model="action" /></td>
-                            <td class="text-nowrap">@(action.ReviewDate?.ToString("dd MMM yy") ?? "—")</td>
+                            <td class="text-nowrap">@(action.DueDate?.ToString("dd MMM yy") ?? "—")</td>
                             <td><partial name="_StatusBadge" model="action.Status" /></td>
                         </tr>
                     }

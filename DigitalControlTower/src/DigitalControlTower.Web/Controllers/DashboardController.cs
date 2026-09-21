@@ -1,4 +1,5 @@
 using DigitalControlTower.Web.Data;
+using DigitalControlTower.Web.Services;
 using DigitalControlTower.Web.Models;
 using DigitalControlTower.Web.ViewModels;
 using Microsoft.AspNetCore.Mvc;
@@ -6,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DigitalControlTower.Web.Controllers;
 
-public class DashboardController(ApplicationDbContext db) : Controller
+public class DashboardController(ApplicationDbContext db, ReminderService reminders) : Controller
 {
     private static readonly ActionStatus[] ClosedStatuses = [ActionStatus.Complete, ActionStatus.Cancelled];
 
@@ -59,8 +60,8 @@ public class DashboardController(ApplicationDbContext db) : Controller
             .Where(a => a.Status != ActionStatus.Complete && a.Status != ActionStatus.Cancelled
                         && (a.Status == ActionStatus.AtRisk
                             || a.Status == ActionStatus.Delayed
-                            || (a.ReviewDate != null && a.ReviewDate < today)))
-            .OrderBy(a => a.ReviewDate ?? DateOnly.MaxValue)
+                            || (a.DueDate != null && a.DueDate < today)))
+            .OrderBy(a => a.DueDate ?? DateOnly.MaxValue)
             .ThenByDescending(a => a.Priority)
             .Take(15)
             .ToListAsync(ct);
@@ -71,6 +72,18 @@ public class DashboardController(ApplicationDbContext db) : Controller
             .Take(12)
             .ToListAsync(ct);
 
+        // The value columns are read and totalled here rather than summed in SQL: there
+        // are only a few dozen projects, and it keeps the query portable.
+        var value = await db.Projects
+            .Select(p => new
+            {
+                Type = p.SavingsType,
+                Money = p.CostAvoidance ?? 0,
+                Hours = p.LabourHoursSaving ?? 0,
+                Productivity = p.ProductivityImprovement ?? 0
+            })
+            .ToListAsync(ct);
+
         var model = new DashboardViewModel
         {
             TotalActions = statusCounts.Sum(s => s.Count),
@@ -78,7 +91,7 @@ public class DashboardController(ApplicationDbContext db) : Controller
             OpenActions = statusCounts.Where(s => !ClosedStatuses.Contains(s.Key)).Sum(s => s.Count),
             OverdueActions = await db.Actions.CountAsync(
                 a => a.Status != ActionStatus.Complete && a.Status != ActionStatus.Cancelled
-                     && a.ReviewDate != null && a.ReviewDate < today, ct),
+                     && a.DueDate != null && a.DueDate < today, ct),
             ProjectCount = await db.Projects.CountAsync(ct),
             ActiveProjects = await db.Projects.CountAsync(p => p.Status == ProjectStatus.Active, ct),
             StatusBreakdown = statusCounts
@@ -92,8 +105,31 @@ public class DashboardController(ApplicationDbContext db) : Controller
             CurrentWeek = await db.WeekDates
                 .Where(w => w.StartDate <= today)
                 .OrderByDescending(w => w.StartDate)
-                .FirstOrDefaultAsync(ct)
+                .FirstOrDefaultAsync(ct),
+            TodaysMeeting = await db.Meetings
+                .Include(m => m.Participants).ThenInclude(p => p.User)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(m => m.Date == today, ct),
+            LastMeeting = await db.Meetings
+                .AsNoTracking()
+                .Where(m => m.Date < today)
+                .OrderByDescending(m => m.Date)
+                .FirstOrDefaultAsync(ct),
+            MeetingActionsOpen = await db.Actions.CountAsync(
+                a => a.Origin == ActionOrigin.Meeting
+                     && a.Status != ActionStatus.Complete && a.Status != ActionStatus.Cancelled, ct),
+            TotalFinancialValue = value.Sum(v => v.Money),
+            TotalHoursSaved = value.Sum(v => v.Hours),
+            ProjectsWithoutValue = value.Count(v => v.Type == SavingsType.NotSet
+                                                    && v.Money == 0 && v.Hours == 0 && v.Productivity == 0),
+            ActionsWithoutDueDate = await db.Actions.CountAsync(
+                a => a.DueDate == null
+                     && a.Status != ActionStatus.Complete && a.Status != ActionStatus.Cancelled, ct)
         };
+
+        var batches = await reminders.PreviewAsync(today, ct);
+        model.RemindersDueNextRun = batches.Sum(b => b.DueSoon.Count);
+        model.ReminderTargetDate = today.AddDays(2);
 
         return View(model);
     }

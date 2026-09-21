@@ -77,6 +77,20 @@ public class PillarsController(ApplicationDbContext db) : Controller
         if (pillar is null) return NotFound();
 
         db.Comments.RemoveRange(pillar.Projects.SelectMany(p => p.Items).SelectMany(i => i.Comments));
+
+        // Same rule as deleting a project: plan actions go, meeting actions are unlinked.
+        var itemIds = pillar.Projects.SelectMany(p => p.Items).Select(i => i.Id).ToList();
+        var doomed = await db.Actions.Where(a => a.WorkItemId != null && itemIds.Contains(a.WorkItemId)).ToListAsync(ct);
+        var doomedIds = doomed.Select(a => a.Id).ToList();
+        await db.Actions.Where(a => a.RelatedActionId != null && doomedIds.Contains(a.RelatedActionId))
+            .ExecuteUpdateAsync(set => set.SetProperty(a => a.RelatedActionId, (string?)null), ct);
+        db.Actions.RemoveRange(doomed);
+        foreach (var orphan in await db.Actions.Where(a => a.PillarId == pillar.Id && a.WorkItemId == null).ToListAsync(ct))
+        {
+            orphan.ProjectId = null;
+            orphan.PillarId = null;
+        }
+
         db.Pillars.Remove(pillar);
         await db.SaveChangesAsync(ct);
 

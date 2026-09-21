@@ -16,7 +16,7 @@ public class ProjectsController(ApplicationDbContext db) : Controller
         nameof(Project.BaselineDate) + "," + nameof(Project.ImplementationDate) + "," +
         nameof(Project.ActualCompletionDate) + "," + nameof(Project.CostAvoidance) + "," +
         nameof(Project.LabourHoursSaving) + "," + nameof(Project.ProductivityImprovement) + "," +
-        nameof(Project.SavingsType);
+        nameof(Project.SavingsType) + "," + nameof(Project.ValueNotes);
 
     public async Task<IActionResult> Index(string? pillarId, ProjectStatus? status, string? search, CancellationToken ct)
     {
@@ -140,6 +140,7 @@ public class ProjectsController(ApplicationDbContext db) : Controller
             return View(input);
         }
 
+        var pillarChanged = project.PillarId != input.PillarId;
         project.PillarId = input.PillarId;
         project.Name = input.Name;
         project.Scope = input.Scope;
@@ -156,6 +157,16 @@ public class ProjectsController(ApplicationDbContext db) : Controller
         project.LabourHoursSaving = input.LabourHoursSaving;
         project.ProductivityImprovement = input.ProductivityImprovement;
         project.SavingsType = input.SavingsType;
+        project.ValueNotes = input.ValueNotes;
+
+        // Actions carry the pillar so reports can group on them directly; moving a project
+        // to another pillar has to carry its actions across too.
+        if (pillarChanged)
+        {
+            await db.Actions
+                .Where(a => a.ProjectId == project.Id)
+                .ExecuteUpdateAsync(set => set.SetProperty(a => a.PillarId, project.PillarId), ct);
+        }
 
         await db.SaveChangesAsync(ct);
         TempData["Success"] = $"Project '{project.Name}' updated.";
@@ -184,6 +195,21 @@ public class ProjectsController(ApplicationDbContext db) : Controller
 
         // Work item comments are restricted rather than cascaded, so clear them first.
         db.Comments.RemoveRange(project.Items.SelectMany(i => i.Comments));
+
+        // Plan actions go with the work items they hang off; actions raised in a meeting
+        // and merely filed against this project are kept, with the link cleared.
+        var itemIds = project.Items.Select(i => i.Id).ToList();
+        var doomed = await db.Actions.Where(a => a.WorkItemId != null && itemIds.Contains(a.WorkItemId)).ToListAsync(ct);
+        var doomedIds = doomed.Select(a => a.Id).ToList();
+        await db.Actions.Where(a => a.RelatedActionId != null && doomedIds.Contains(a.RelatedActionId))
+            .ExecuteUpdateAsync(set => set.SetProperty(a => a.RelatedActionId, (string?)null), ct);
+        db.Actions.RemoveRange(doomed);
+        foreach (var orphan in await db.Actions.Where(a => a.ProjectId == project.Id && a.WorkItemId == null).ToListAsync(ct))
+        {
+            orphan.ProjectId = null;
+            orphan.PillarId = null;
+        }
+
         db.Projects.Remove(project);
         await db.SaveChangesAsync(ct);
 

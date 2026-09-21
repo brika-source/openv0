@@ -1,0 +1,32 @@
+@model DigitalControlTower.Web.Views.Reports.ActionGapModel
+
+<div class="card mb-3">
+    <div class="card-header">
+        <span class="fw-semibold">@Model.Title</span>
+        <span class="badge bg-secondary">@Model.Actions.Count</span>
+        <div class="small text-muted">@Model.Hint</div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm table-hover mb-0 align-middle">
+            <thead><tr><th>Serial</th><th>Action</th><th>Where</th><th>Owners</th><th>Due</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+            @if (Model.Actions.Count == 0)
+            {
+                <tr><td colspan="7" class="text-muted text-center py-3">Nothing missing here.</td></tr>
+            }
+            @foreach (var action in Model.Actions)
+            {
+                <tr>
+                    <td class="text-nowrap"><a asp-controller="Actions" asp-action="Details" asp-route-id="@action.Id">@action.Serial</a></td>
+                    <td>@action.Name</td>
+                    <td class="small text-muted">@(string.IsNullOrEmpty(action.ContextPath) ? "—" : action.ContextPath)</td>
+                    <td><partial name="_OwnerHandles" model="action" /></td>
+                    <td class="text-nowrap @(action.IsOverdue ? "text-danger fw-semibold" : "")">@(action.DueDate?.ToString("dd MMM yy") ?? "—")</td>
+                    <td><partial name="_StatusBadge" model="action.Status" /></td>
+                    <td class="text-end"><a class="btn btn-sm btn-outline-secondary" asp-controller="Actions" asp-action="Edit" asp-route-id="@action.Id">Fix</a></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

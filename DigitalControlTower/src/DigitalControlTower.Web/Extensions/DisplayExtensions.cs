@@ -33,6 +33,15 @@ public static class DisplayExtensions
         _ => "bg-light text-dark"
     };
 
+    public static string BadgeClass(this SavingsType type) => type switch
+    {
+        SavingsType.Hard => "bg-success",
+        SavingsType.Soft => "bg-info text-dark",
+        SavingsType.CostAvoidance => "bg-primary",
+        SavingsType.Other => "bg-secondary",
+        _ => "bg-light text-dark"
+    };
+
     public static string BadgeClass(this ProjectStatus status) => status switch
     {
         ProjectStatus.Active => "bg-primary",

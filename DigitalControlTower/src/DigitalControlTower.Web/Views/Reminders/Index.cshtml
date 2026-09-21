@@ -1,0 +1,111 @@
+@model List<DigitalControlTower.Web.Services.ReminderBatch>
+@using DigitalControlTower.Web.Models
+@{
+    ViewData["Title"] = "Reminders";
+    var log = ViewBag.Log as List<ReminderLog> ?? new();
+    var mailEnabled = (bool)ViewBag.MailEnabled;
+}
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h1 class="h3 mb-1">Reminders</h1>
+        <div class="text-muted small">
+            Owners are mailed <strong>@ViewBag.DaysBefore days</strong> before an action is due —
+            today that means actions due on <strong>@(((DateOnly)ViewBag.TargetDate).ToString("dddd d MMMM yyyy"))</strong>.
+            The daily run starts at @(((TimeOnly)ViewBag.RunAt).ToString("HH\\:mm")).
+        </div>
+    </div>
+    <form asp-action="SendNow" method="post">
+        @Html.AntiForgeryToken()
+        <button class="btn btn-primary" type="submit">Run now</button>
+    </form>
+</div>
+
+@if (!mailEnabled)
+{
+    <div class="alert alert-warning">
+        <strong>Email is switched off.</strong> The run works out who to remind and records it, but nothing leaves
+        the server. To connect Outlook, set <code>Email:Enabled</code> to <code>true</code> in
+        <code>appsettings.json</code> along with the SMTP host (currently <code>@ViewBag.MailHost</code>), and
+        restart the site. Put an address in <code>Email:RedirectAllTo</code> first to send everything to one
+        mailbox while you test.
+    </div>
+}
+else if (!string.IsNullOrWhiteSpace(ViewBag.RedirectAllTo as string))
+{
+    <div class="alert alert-info">
+        Mail is being redirected to <strong>@ViewBag.RedirectAllTo</strong> — clear
+        <code>Email:RedirectAllTo</code> when you are ready to mail the owners themselves.
+    </div>
+}
+
+<div class="card mb-3">
+    <div class="card-header fw-semibold">Going out on the next run</div>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+            <thead><tr><th>Handle</th><th>Email</th><th class="text-end">Due soon</th><th class="text-end">Overdue</th><th>Actions</th></tr></thead>
+            <tbody>
+            @if (Model.Count == 0)
+            {
+                <tr><td colspan="5" class="text-muted text-center py-3">Nothing due in @ViewBag.DaysBefore days.</td></tr>
+            }
+            @foreach (var batch in Model)
+            {
+                <tr>
+                    <td><span class="handle" title="@batch.Owner.Name">@batch.Owner.Handle</span></td>
+                    <td class="small text-muted">
+                        @batch.Owner.Email
+                        @if (batch.Owner.IsProvisional)
+                        {
+                            <span class="badge bg-warning text-dark" title="This address was guessed during the import.">check address</span>
+                        }
+                    </td>
+                    <td class="text-end">@batch.DueSoon.Count</td>
+                    <td class="text-end">@(batch.Overdue.Count == 0 ? "—" : batch.Overdue.Count.ToString())</td>
+                    <td class="small">
+                        @foreach (var action in batch.All.Take(6))
+                        {
+                            <a asp-controller="Actions" asp-action="Details" asp-route-id="@action.Id">@action.Serial</a><text> </text>
+                        }
+                        @if (batch.Count > 6) { <span class="text-muted">+@(batch.Count - 6) more</span> }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header fw-semibold">Recent runs</div>
+    <div class="table-responsive">
+        <table class="table table-sm mb-0">
+            <thead><tr><th>Sent</th><th>Handle</th><th>Email</th><th class="text-end">Actions</th><th>Result</th></tr></thead>
+            <tbody>
+            @if (log.Count == 0)
+            {
+                <tr><td colspan="5" class="text-muted text-center py-3">No reminders sent yet.</td></tr>
+            }
+            @foreach (var entry in log)
+            {
+                <tr>
+                    <td class="text-nowrap small">@entry.SentAt.ToString("dd MMM yyyy HH:mm")</td>
+                    <td><span class="handle">@entry.Handle</span></td>
+                    <td class="small text-muted">@entry.Email</td>
+                    <td class="text-end">@entry.ActionCount</td>
+                    <td>
+                        @if (entry.Succeeded)
+                        {
+                            <span class="badge bg-success">sent</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-danger" title="@entry.Error">failed</span>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

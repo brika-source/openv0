@@ -79,6 +79,12 @@
 
     <div class="col-md-3">
         <label asp-for="SavingsType" class="form-label"></label>
-        <input asp-for="SavingsType" class="form-control" />
+        <select asp-for="SavingsType" class="form-select" asp-items="Html.GetEnumSelectList<SavingsType>()"></select>
+        <div class="form-text">Hard, soft, cost avoidance or other — this drives the value report.</div>
+    </div>
+    <div class="col-12">
+        <label asp-for="ValueNotes" class="form-label"></label>
+        <textarea asp-for="ValueNotes" class="form-control" rows="2"
+                  placeholder="e.g. 3 operators x 2 hours per shift x 3 shifts, at standard rate"></textarea>
     </div>
 </div>

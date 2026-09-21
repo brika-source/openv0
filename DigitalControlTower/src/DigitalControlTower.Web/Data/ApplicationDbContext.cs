@@ -18,6 +18,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<ActionTag> ActionTags => Set<ActionTag>();
     public DbSet<ActionHistory> ActionHistories => Set<ActionHistory>();
     public DbSet<Comment> Comments => Set<Comment>();
+    public DbSet<Meeting> Meetings => Set<Meeting>();
+    public DbSet<MeetingParticipant> MeetingParticipants => Set<MeetingParticipant>();
+    public DbSet<ReminderLog> ReminderLogs => Set<ReminderLog>();
     public DbSet<WeekDate> WeekDates => Set<WeekDate>();
     public DbSet<SerialCounter> SerialCounters => Set<SerialCounter>();
 
@@ -26,7 +29,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     [
         nameof(ActionItem.Status), nameof(ActionItem.Priority),
         nameof(ActionItem.Quarter), nameof(ActionItem.Name), nameof(ActionItem.Target),
-        nameof(ActionItem.ReviewDate), nameof(ActionItem.CompletionDate), nameof(ActionItem.NextStep)
+        nameof(ActionItem.DueDate), nameof(ActionItem.CompletionDate), nameof(ActionItem.NextStep)
     ];
 
     protected override void OnModelCreating(ModelBuilder b)
@@ -40,6 +43,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         b.Entity<ActionItem>().Property(a => a.Recurrence).HasConversion<string>().HasMaxLength(32);
         b.Entity<Project>().Property(p => p.Status).HasConversion<string>().HasMaxLength(32);
         b.Entity<Project>().Property(p => p.Scope).HasConversion<string>().HasMaxLength(32);
+        b.Entity<Project>().Property(p => p.SavingsType).HasConversion<string>().HasMaxLength(32);
+        b.Entity<ActionItem>().Property(a => a.Origin).HasConversion<string>().HasMaxLength(16);
         b.Entity<ActionWeek>().Property(w => w.Mark).HasConversion<string>().HasMaxLength(8);
 
         b.Entity<AppUser>().HasIndex(u => u.Handle).IsUnique();
@@ -73,9 +78,29 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         b.Entity<ActionItem>()
             .HasOne(a => a.WorkItem).WithMany(i => i.Actions)
             .HasForeignKey(a => a.WorkItemId).OnDelete(DeleteBehavior.Cascade);
+
+        // The project and pillar links are the rolled-up context, kept in step with the
+        // work item below. They are restricted so they never add a second cascade path.
+        b.Entity<ActionItem>()
+            .HasOne(a => a.Project).WithMany(p => p.Actions)
+            .HasForeignKey(a => a.ProjectId).OnDelete(DeleteBehavior.Restrict);
+        b.Entity<ActionItem>()
+            .HasOne(a => a.Pillar).WithMany(p => p.Actions)
+            .HasForeignKey(a => a.PillarId).OnDelete(DeleteBehavior.Restrict);
+        b.Entity<ActionItem>()
+            .HasOne(a => a.Meeting).WithMany(m => m.Actions)
+            .HasForeignKey(a => a.MeetingId).OnDelete(DeleteBehavior.SetNull);
+        b.Entity<ActionItem>()
+            .HasOne(a => a.RelatedAction).WithMany()
+            .HasForeignKey(a => a.RelatedActionId).OnDelete(DeleteBehavior.NoAction);
+
         b.Entity<ActionItem>().HasIndex(a => a.Serial).IsUnique();
         b.Entity<ActionItem>().HasIndex(a => a.WorkItemId);
+        b.Entity<ActionItem>().HasIndex(a => a.ProjectId);
+        b.Entity<ActionItem>().HasIndex(a => a.PillarId);
+        b.Entity<ActionItem>().HasIndex(a => a.MeetingId);
         b.Entity<ActionItem>().HasIndex(a => a.Status);
+        b.Entity<ActionItem>().HasIndex(a => a.DueDate);
 
         b.Entity<ActionOwner>()
             .HasOne(o => o.ActionItem).WithMany(a => a.Owners)
@@ -113,19 +138,83 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             "CK_Comments_SingleParent",
             "([ActionItemId] IS NOT NULL AND [WorkItemId] IS NULL) OR ([ActionItemId] IS NULL AND [WorkItemId] IS NOT NULL)"));
 
+        b.Entity<Meeting>().HasIndex(m => m.Serial).IsUnique();
+        b.Entity<Meeting>().HasIndex(m => m.Date);
+        b.Entity<Meeting>()
+            .HasOne(m => m.Chair).WithMany()
+            .HasForeignKey(m => m.ChairUserId).OnDelete(DeleteBehavior.Restrict);
+
+        b.Entity<MeetingParticipant>()
+            .HasOne(p => p.Meeting).WithMany(m => m.Participants)
+            .HasForeignKey(p => p.MeetingId).OnDelete(DeleteBehavior.Cascade);
+        b.Entity<MeetingParticipant>()
+            .HasOne(p => p.User).WithMany()
+            .HasForeignKey(p => p.UserId).OnDelete(DeleteBehavior.Restrict);
+        b.Entity<MeetingParticipant>().HasIndex(p => new { p.MeetingId, p.UserId }).IsUnique();
+
+        b.Entity<ReminderLog>().HasIndex(r => r.SentAt);
+
         b.Entity<WeekDate>().Property(w => w.WeekIndex).ValueGeneratedNever();
     }
 
     public override int SaveChanges()
     {
+        ResolveActionContext();
         StampAndAudit();
         return base.SaveChanges();
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
+        ResolveActionContext();
         StampAndAudit();
         return base.SaveChangesAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Rolls an action's context up from its work item: an action under a work item always
+    /// reports that work item's project and pillar, so every report can group on the action
+    /// itself. Actions raised in a meeting keep whatever context was chosen for them.
+    /// </summary>
+    private void ResolveActionContext()
+    {
+        var entries = ChangeTracker.Entries<ActionItem>()
+            .Where(e => e.State is EntityState.Added or EntityState.Modified)
+            .ToList();
+        if (entries.Count == 0) return;
+
+        var wanted = entries
+            .Select(e => e.Entity.WorkItemId)
+            .Where(id => !string.IsNullOrEmpty(id))
+            .Distinct()
+            .ToList();
+
+        var map = wanted.Count == 0
+            ? new Dictionary<string, (string ProjectId, string PillarId)>()
+            : WorkItems.AsNoTracking()
+                .Where(i => wanted.Contains(i.Id))
+                .Select(i => new { i.Id, i.ProjectId, i.Project!.PillarId })
+                .ToDictionary(x => x.Id, x => (x.ProjectId, x.PillarId));
+
+        foreach (var entry in entries)
+        {
+            var action = entry.Entity;
+            if (string.IsNullOrEmpty(action.WorkItemId)) continue;
+
+            // A work item added in the same unit of work is not in the database yet.
+            if (!map.TryGetValue(action.WorkItemId, out var context))
+            {
+                var local = WorkItems.Local.FirstOrDefault(i => i.Id == action.WorkItemId);
+                var project = local is null
+                    ? null
+                    : Projects.Local.FirstOrDefault(p => p.Id == local.ProjectId);
+                if (local is null || project is null) continue;
+                context = (local.ProjectId, project.PillarId);
+            }
+
+            action.ProjectId = context.ProjectId;
+            action.PillarId = context.PillarId;
+        }
     }
 
     /// <summary>Maintains UpdatedAt and appends audit rows for modified actions.</summary>
@@ -137,6 +226,19 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         // Timestamps are only filled in when the caller left them unset, so an import
         // of an existing export keeps the original CreatedAt/UpdatedAt values.
         foreach (var entry in ChangeTracker.Entries<Project>())
+        {
+            if (entry.State == EntityState.Added)
+            {
+                if (entry.Entity.CreatedAt == default) entry.Entity.CreatedAt = now;
+                if (entry.Entity.UpdatedAt == default) entry.Entity.UpdatedAt = entry.Entity.CreatedAt;
+            }
+            else if (entry.State == EntityState.Modified)
+            {
+                entry.Entity.UpdatedAt = now;
+            }
+        }
+
+        foreach (var entry in ChangeTracker.Entries<Meeting>())
         {
             if (entry.State == EntityState.Added)
             {

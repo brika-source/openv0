@@ -33,6 +33,20 @@
                     <li class="nav-item"><a class="nav-link" asp-controller="Projects" asp-action="Index">Projects</a></li>
                     <li class="nav-item"><a class="nav-link" asp-controller="Actions" asp-action="Index">Actions</a></li>
                     <li class="nav-item"><a class="nav-link" asp-controller="WeekGrid" asp-action="Index">Week grid</a></li>
+                    <li class="nav-item">
+                        <a class="nav-link" asp-controller="Meetings" asp-action="Index">
+                            <span aria-hidden="true">&#128197;</span> Meetings action plan
+                        </a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Reports</a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" asp-controller="Reports" asp-action="Value">Value added</a></li>
+                            <li><a class="dropdown-item" asp-controller="Reports" asp-action="Gaps">What is missing</a></li>
+                            <li><hr class="dropdown-divider" /></li>
+                            <li><a class="dropdown-item" asp-controller="Reminders" asp-action="Index">Reminders</a></li>
+                        </ul>
+                    </li>
                     <li class="nav-item"><a class="nav-link" asp-controller="Users" asp-action="Index">Users</a></li>
                 </ul>
                 <form class="d-flex align-items-center gap-2" asp-controller="Users" asp-action="SignInAs" method="post">

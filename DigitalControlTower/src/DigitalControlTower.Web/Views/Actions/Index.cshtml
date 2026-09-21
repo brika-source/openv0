@@ -47,6 +47,32 @@
         <div class="col-md-1 d-grid">
             <button class="btn btn-sm btn-dark" type="submit">Filter</button>
         </div>
+        <div class="col-12 d-flex flex-wrap gap-3 mt-1">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="WithoutDueDate" value="true" id="noDue" checked="@Model.WithoutDueDate" />
+                <label class="form-check-label small" for="noDue">No due date</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="WithoutOwner" value="true" id="noOwner" checked="@Model.WithoutOwner" />
+                <label class="form-check-label small" for="noOwner">No owner</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="OverdueOnly" value="true" id="overdue" checked="@Model.OverdueOnly" />
+                <label class="form-check-label small" for="overdue">Overdue only</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="Origin" value="" id="originAll" checked="@(Model.Origin is null)" />
+                <label class="form-check-label small" for="originAll">All origins</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="Origin" value="Plan" id="originPlan" checked="@(Model.Origin == ActionOrigin.Plan)" />
+                <label class="form-check-label small" for="originPlan">90-day plan</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="Origin" value="Meeting" id="originMeeting" checked="@(Model.Origin == ActionOrigin.Meeting)" />
+                <label class="form-check-label small" for="originMeeting">Meetings</label>
+            </div>
+        </div>
     </div>
     @if (Model.HasFilters)
     {
@@ -74,13 +100,16 @@
                     <td class="text-nowrap"><a asp-action="Details" asp-route-id="@action.Id">@action.Serial</a></td>
                     <td>@action.Name</td>
                     <td class="small text-muted">
-                        @action.WorkItem?.Project?.Name
-                        <div>@action.WorkItem?.Name</div>
+                        @(string.IsNullOrEmpty(action.ContextPath) ? "—" : action.ContextPath)
+                        @if (action.Origin == ActionOrigin.Meeting)
+                        {
+                            <div><span class="badge bg-light text-dark border">meeting</span></div>
+                        }
                     </td>
                     <td class="text-nowrap"><partial name="_OwnerHandles" model="action" /></td>
                     <td>@(action.Quarter == Quarter.None ? "" : action.Quarter.DisplayName())</td>
                     <td><span class="badge @action.Priority.BadgeClass()">@action.Priority.DisplayName()</span></td>
-                    <td class="text-nowrap">@(action.ReviewDate?.ToString("dd MMM yy") ?? "—")</td>
+                    <td class="text-nowrap">@(action.DueDate?.ToString("dd MMM yy") ?? "—")</td>
                     <td><partial name="_StatusBadge" model="action.Status" /></td>
                     <td class="text-end text-nowrap">
                         <a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@action.Id">Edit</a>
@@ -108,7 +137,11 @@
                        asp-route-Owner="@Model.Owner"
                        asp-route-Status="@Model.Status"
                        asp-route-Priority="@Model.Priority"
-                       asp-route-Quarter="@Model.Quarter">@pageNumber</a>
+                       asp-route-Quarter="@Model.Quarter"
+                       asp-route-Origin="@Model.Origin"
+                       asp-route-WithoutDueDate="@Model.WithoutDueDate"
+                       asp-route-WithoutOwner="@Model.WithoutOwner"
+                       asp-route-OverdueOnly="@Model.OverdueOnly">@pageNumber</a>
                 </li>
             }
         </ul>

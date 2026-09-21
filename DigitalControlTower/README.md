@@ -4,21 +4,41 @@ ASP.NET Core 8 MVC application for the Digital Control Tower, backed by SQL Serv
 Entity Framework Core. It replaces the browser-local JSON tracker with a shared database:
 pillars → projects → work items → actions, a 14-week tracking grid, comments and an audit trail.
 
+**For the server owner: everything needed to install is in `deploy/INSTALL.md`.**
+
 **People are identified by their mail alias — the handle.** Walaa Brika is `brika.wm`,
 Hassan Ismail is `ismail.he`. Action owners, project managers, digital owners, comment
 authors and audit entries all use that handle rather than a typed-in name, so the same
 person is never split across "Hassan Ismail", "Hassan ismail" and "hassan" again.
 
+## What the app does
+
+| Screen | What it is for |
+|---|---|
+| **Dashboard** | KPIs, pillar progress, load per handle, what needs attention — plus today's **Digital team meeting**, the value delivered and the reminder queue |
+| **Meetings action plan** | Every digital team meeting: participants, minutes, and the actions raised. Opens straight on today's date |
+| **Pillars / Projects / Actions** | The 90-day plan, searchable and filterable, with comments and a full audit trail |
+| **Week grid** | The 14-week tracking matrix; click a cell to cycle blank → T → R → A |
+| **Reports → Value added** | What the department delivered: hard vs soft saving, by pillar, by owner |
+| **Reports → What is missing** | Actions with no due date or owner, overdue actions, projects with no value, empty projects and work items |
+| **Reports → Reminders** | What the next reminder run will send, a Run now button, and the log of what went out |
+| **Users** | Handles, names and addresses — the addresses the reminders go to |
+
 ## What is in here
 
 ```
 DigitalControlTower.sln
+deploy/INSTALL.md                  Server owner's install guide (start here to deploy)
+deploy/install-windows-service.ps1 Installs the published app as a Windows service
+deploy/publish-self-contained.ps1  Builds a copy that carries its own .NET runtime
 src/DigitalControlTower.Web/       ASP.NET Core MVC app (controllers, views, EF Core model)
   Models/                          Entities and enums
-  Data/ApplicationDbContext.cs     Mapping, indexes, constraints, audit hook
+  Data/ApplicationDbContext.cs     Mapping, indexes, constraints, audit hook, context roll-up
   Data/JsonExportSeeder.cs         Imports a JSON export into an empty database
   Data/PeopleDirectory.cs          Maps legacy free-text names onto users with handles
   Services/UserHandle.cs           Derives and normalises handles
+  Services/ReminderService.cs      Works out and sends the "due in two days" mails
+  Services/IEmailSender.cs         SMTP delivery for Outlook/Exchange
   Data/Migrations/                 EF Core Code-First migrations
   Data/seed/                       The JSON export this database was modelled on
 db/01_schema.sql                   Stand-alone schema script (idempotent, generated from the migration)
@@ -33,7 +53,10 @@ tools/generate_seed_sql.py         Regenerates 02_seed_data.sql from any newer J
 | `Pillars` | Value Protection, Value Creation, Capability, General, Automation, Proficy | `SortOrder` drives display order |
 | `Projects` | Project record with owners, dates and savings figures | FK to `Pillars`, optional FK to `Users` |
 | `WorkItems` | Workstreams inside a project | Cascade delete from `Projects` |
-| `Actions` | The tracked actions (`ACT-0001` …) | Unique `Serial`, cascade delete from `WorkItems` |
+| `Actions` | The tracked actions (`ACT-0001` …) | Unique `Serial`; `WorkItemId` optional, `ProjectId`/`PillarId` carry the rolled-up context, `MeetingId` and `RelatedActionId` link it back to where it came from |
+| `Meetings` | Digital team meetings (`MTG-0001` …), with the minutes | One per date by default, reachable by date |
+| `MeetingParticipants` | Who attended | Unique on (`MeetingId`, `UserId`) |
+| `ReminderLogs` | Every reminder mail, and whether it was delivered | |
 | `ActionOwners` | Which people own an action | Unique on (`ActionItemId`, `UserId`); an action may have several owners |
 | `ActionWeeks` | One row per marked cell of the 14-week grid | Unique on (`ActionItemId`, `WeekIndex`), mark `T`/`R`/`A` |
 | `ActionTags` | Free-text tags per action | Unique on (`ActionItemId`, `Tag`) |
@@ -51,6 +74,48 @@ timestamps use `datetime2`, and money/hours columns use `decimal(18,2)`.
 someone leaving; every other person reference is a foreign key to `Users`. Those links are
 `NO ACTION` rather than cascading, because SQL Server allows only one cascading path between
 a pair of tables — `UsersController` clears them when a person is deleted.
+
+## Meetings that feed the master plan
+
+**Digital team meeting** on the home page opens today's meeting, creating it the first
+time. The date can be changed, participants are picked from the handles in `Users`, and
+the minutes are free text.
+
+Actions raised in a meeting are **ordinary actions in the same table**, so they appear in
+the action list, the week grid, the reports and the reminder run like any other. They
+always start *Not Started*, and each one can be tied to:
+
+- **a pillar** — rolls up to that pillar,
+- **a project** — rolls up to that project and its pillar,
+- **a 90-day work item** — filed in the plan exactly like a plan action,
+- **another action** — recorded as a follow-on, inheriting that action's context.
+
+Every action carries `ProjectId` and `PillarId` of its own, kept in step with its work item
+by the context, which is why a meeting action attached only to a pillar still rolls up
+everywhere. Deleting a meeting keeps its actions; the link is cleared.
+
+## Reminders
+
+Owners are mailed **two days before an action is due**, with anything already overdue in
+the same mail. The sweep runs daily at `Reminders:RunAt`, and an action is reminded once
+per due date — moving the date re-arms it. `Reports → Reminders` shows what the next run
+will send, sends it on demand, and logs every attempt.
+
+Configure the relay under `Email` in `appsettings.Production.json` (see
+`deploy/INSTALL.md` §4). With `Email:Enabled` false the run still works out and records
+who would be mailed, which is a safe way to try it.
+
+## Value added
+
+Each project carries a **value type** (hard saving, soft saving, cost avoidance, other),
+an annual financial value, labour hours saved, a productivity percentage and a note on how
+the figure was arrived at. `Reports → Value added` totals that by type, by pillar and by
+owner, and flags the projects where nothing has been captured yet.
+
+`Reports → What is missing` is the other half of that: actions with no due date (so nobody
+is reminded), actions with no owner, overdue actions, projects with no value, projects
+with no owner, projects with no work items, and work items with no actions. Each row links
+straight to the screen that fixes it.
 
 ### How people are matched when importing
 
