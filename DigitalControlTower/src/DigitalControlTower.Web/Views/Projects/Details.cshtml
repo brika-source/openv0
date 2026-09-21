@@ -1,0 +1,119 @@
+@model ProjectDetailsViewModel
+@{
+    var project = Model.Project;
+    ViewData["Title"] = project.Name;
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb small">
+        <li class="breadcrumb-item"><a asp-action="Index">Projects</a></li>
+        <li class="breadcrumb-item"><a asp-action="Index" asp-route-pillarId="@project.PillarId">@project.Pillar?.Name</a></li>
+        <li class="breadcrumb-item active">@project.Name</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h1 class="h3 mb-1">@project.Name</h1>
+        <span class="badge @project.Status.BadgeClass()">@project.Status.DisplayName()</span>
+        <span class="text-muted small">
+            @project.Pillar?.Name
+            @if (project.Scope is not null) { <span>&middot; @project.Scope.Value.DisplayName()</span> }
+        </span>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" asp-controller="WeekGrid" asp-action="Index" asp-route-projectId="@project.Id">Week grid</a>
+        <a class="btn btn-outline-secondary" asp-controller="WorkItems" asp-action="Create" asp-route-projectId="@project.Id">Add work item</a>
+        <a class="btn btn-primary" asp-action="Edit" asp-route-id="@project.Id">Edit</a>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-lg-8">
+        <div class="card h-100">
+            <div class="card-header fw-semibold">Project data</div>
+            <div class="card-body">
+                <dl class="row small mb-0">
+                    <dt class="col-sm-3">Department owner</dt><dd class="col-sm-3">@(project.DeptOwner ?? "—")</dd>
+                    <dt class="col-sm-3">Digital owner</dt><dd class="col-sm-3">@(project.DigitalOwner?.Name ?? "—")</dd>
+                    <dt class="col-sm-3">Project manager</dt><dd class="col-sm-3">@(project.Pm ?? "—")</dd>
+                    <dt class="col-sm-3">Savings type</dt><dd class="col-sm-3">@(project.SavingsType ?? "—")</dd>
+                    <dt class="col-sm-3">Start</dt><dd class="col-sm-3">@(project.StartDate?.ToString("dd MMM yyyy") ?? "—")</dd>
+                    <dt class="col-sm-3">Due</dt><dd class="col-sm-3">@(project.DueDate?.ToString("dd MMM yyyy") ?? "—")</dd>
+                    <dt class="col-sm-3">Baseline</dt><dd class="col-sm-3">@(project.BaselineDate?.ToString("dd MMM yyyy") ?? "—")</dd>
+                    <dt class="col-sm-3">Implementation</dt><dd class="col-sm-3">@(project.ImplementationDate?.ToString("dd MMM yyyy") ?? "—")</dd>
+                    <dt class="col-sm-3">Actual completion</dt><dd class="col-sm-3">@(project.ActualCompletionDate?.ToString("dd MMM yyyy") ?? "—")</dd>
+                    <dt class="col-sm-3">Cost avoidance</dt><dd class="col-sm-3">@(project.CostAvoidance?.ToString("N2") ?? "—")</dd>
+                    <dt class="col-sm-3">Labour hours saving</dt><dd class="col-sm-3">@(project.LabourHoursSaving?.ToString("N2") ?? "—")</dd>
+                    <dt class="col-sm-3">Productivity improvement</dt><dd class="col-sm-3">@(project.ProductivityImprovement?.ToString("N2") ?? "—")</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header fw-semibold">Progress</div>
+            <div class="card-body">
+                <div class="display-6">@Model.Progress<span class="fs-6">%</span></div>
+                <div class="progress mb-3" style="height: 1rem">
+                    <div class="progress-bar bg-success" style="width: @(Model.Progress.ToString(System.Globalization.CultureInfo.InvariantCulture))%"></div>
+                </div>
+                <div class="small text-muted">
+                    @Model.CompleteActions complete &middot; @Model.OpenActions open &middot; @Model.TotalActions total
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@foreach (var item in project.Items)
+{
+    <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <div>
+                <span class="fw-semibold">@item.Name</span>
+                @if (!string.IsNullOrWhiteSpace(item.Notes))
+                {
+                    <div class="small text-muted">@item.Notes</div>
+                }
+            </div>
+            <div class="d-flex gap-2">
+                <a class="btn btn-sm btn-outline-secondary" asp-controller="WorkItems" asp-action="Details" asp-route-id="@item.Id">
+                    Open @if (item.Comments.Count > 0) { <span class="badge bg-secondary">@item.Comments.Count</span> }
+                </a>
+                <a class="btn btn-sm btn-outline-primary" asp-controller="Actions" asp-action="Create" asp-route-workItemId="@item.Id">Add action</a>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-sm table-hover mb-0 align-middle">
+                <thead><tr><th>Serial</th><th>Action</th><th>Owner</th><th>Qtr</th><th>Priority</th><th>Review</th><th>Status</th></tr></thead>
+                <tbody>
+                @if (item.Actions.Count == 0)
+                {
+                    <tr><td colspan="7" class="text-muted text-center py-3">No actions on this work item.</td></tr>
+                }
+                @foreach (var action in item.Actions)
+                {
+                    <tr>
+                        <td class="text-nowrap"><a asp-controller="Actions" asp-action="Details" asp-route-id="@action.Id">@action.Serial</a></td>
+                        <td>@action.Name</td>
+                        <td class="text-nowrap">@action.Owner</td>
+                        <td>@(action.Quarter == Quarter.None ? "" : action.Quarter.DisplayName())</td>
+                        <td><span class="badge @action.Priority.BadgeClass()">@action.Priority.DisplayName()</span></td>
+                        <td class="text-nowrap">@(action.ReviewDate?.ToString("dd MMM yy") ?? "—")</td>
+                        <td><partial name="_StatusBadge" model="action.Status" /></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@if (project.Items.Count == 0)
+{
+    <div class="alert alert-info">
+        No work items yet.
+        <a asp-controller="WorkItems" asp-action="Create" asp-route-projectId="@project.Id">Add the first one</a>.
+    </div>
+}

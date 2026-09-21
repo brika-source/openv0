@@ -1,0 +1,72 @@
+@model List<Project>
+@{
+    ViewData["Title"] = "Projects";
+    var counts = ViewBag.ActionCounts as Dictionary<string, (int Actions, int Complete)> ?? new();
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Projects <span class="text-muted fs-6">@Model.Count</span></h1>
+    <a class="btn btn-primary" asp-action="Create" asp-route-pillarId="@ViewBag.PillarId">New project</a>
+</div>
+
+<form method="get" class="card card-body mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-4">
+            <label class="form-label small mb-1">Search</label>
+            <input class="form-control form-control-sm" name="search" value="@ViewBag.Search" placeholder="project or PM" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small mb-1">Pillar</label>
+            <select class="form-select form-select-sm" name="pillarId" asp-items="ViewBag.Pillars as Microsoft.AspNetCore.Mvc.Rendering.SelectList">
+                <option value="">All pillars</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small mb-1">Status</label>
+            <select class="form-select form-select-sm" name="status" asp-items="Html.GetEnumSelectList<ProjectStatus>()">
+                <option value="">All statuses</option>
+            </select>
+        </div>
+        <div class="col-md-2 d-grid">
+            <button class="btn btn-sm btn-dark" type="submit">Filter</button>
+        </div>
+    </div>
+</form>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0">
+            <thead><tr>
+                <th>Project</th><th>Pillar</th><th>Scope</th><th>Dept owner</th><th>Digital owner</th>
+                <th>PM</th><th>Due</th><th class="text-end">Actions</th><th style="width:15%">Progress</th><th>Status</th>
+            </tr></thead>
+            <tbody>
+            @if (Model.Count == 0)
+            {
+                <tr><td colspan="10" class="text-center text-muted py-4">No projects yet.</td></tr>
+            }
+            @foreach (var project in Model)
+            {
+                var count = counts.TryGetValue(project.Id, out var c) ? c : (Actions: 0, Complete: 0);
+                var progress = count.Actions == 0 ? 0 : Math.Round(100m * count.Complete / count.Actions, 1);
+                <tr>
+                    <td><a asp-action="Details" asp-route-id="@project.Id">@project.Name</a></td>
+                    <td class="small text-muted">@project.Pillar?.Name</td>
+                    <td class="small">@(project.Scope?.DisplayName() ?? "—")</td>
+                    <td class="small">@(project.DeptOwner ?? "—")</td>
+                    <td class="small">@(project.DigitalOwner?.Name ?? "—")</td>
+                    <td class="small">@(project.Pm ?? "—")</td>
+                    <td class="small text-nowrap">@(project.DueDate?.ToString("dd MMM yy") ?? "—")</td>
+                    <td class="text-end">@count.Actions</td>
+                    <td>
+                        <div class="progress" style="height: .9rem">
+                            <div class="progress-bar bg-success" style="width: @(progress.ToString(System.Globalization.CultureInfo.InvariantCulture))%"></div>
+                        </div>
+                    </td>
+                    <td><span class="badge @project.Status.BadgeClass()">@project.Status.DisplayName()</span></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

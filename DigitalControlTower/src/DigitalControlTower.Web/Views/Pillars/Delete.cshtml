@@ -1,0 +1,13 @@
+@model Pillar
+@{ ViewData["Title"] = "Delete pillar"; }
+
+<h1 class="h3 mb-3">Delete pillar</h1>
+
+<div class="card card-body" style="max-width: 40rem">
+    <p class="text-danger">This removes '@Model.Name' and its @Model.Projects.Count project(s), with all their work items and actions.</p>
+    <form asp-action="Delete" asp-route-id="@Model.Id" method="post" class="d-flex gap-2">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-danger">Delete permanently</button>
+        <a class="btn btn-outline-secondary" asp-action="Index">Cancel</a>
+    </form>
+</div>

@@ -1,0 +1,150 @@
+@model ActionItem
+@{
+    ViewData["Title"] = Model.Serial;
+    var weeks = ViewBag.Weeks as List<WeekDate> ?? new List<WeekDate>();
+    var marks = Model.Weeks.ToDictionary(w => w.WeekIndex, w => w.Mark);
+    var returnUrl = Context.Request.Path + Context.Request.QueryString;
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb small">
+        <li class="breadcrumb-item"><a asp-controller="Projects" asp-action="Index" asp-route-pillarId="@Model.WorkItem?.Project?.PillarId">@Model.WorkItem?.Project?.Pillar?.Name</a></li>
+        <li class="breadcrumb-item"><a asp-controller="Projects" asp-action="Details" asp-route-id="@Model.WorkItem?.ProjectId">@Model.WorkItem?.Project?.Name</a></li>
+        <li class="breadcrumb-item"><a asp-controller="WorkItems" asp-action="Details" asp-route-id="@Model.WorkItemId">@Model.WorkItem?.Name</a></li>
+        <li class="breadcrumb-item active">@Model.Serial</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h1 class="h3 mb-1">@Model.Name</h1>
+        <div class="text-muted">
+            <span class="badge bg-light text-dark border">@Model.Serial</span>
+            <partial name="_StatusBadge" model="Model.Status" />
+            <span class="badge @Model.Priority.BadgeClass()">@Model.Priority.DisplayName()</span>
+            @if (Model.Quarter != Quarter.None) { <span class="badge bg-secondary">@Model.Quarter.DisplayName()</span> }
+            @foreach (var tag in Model.Tags) { <span class="badge bg-info text-dark">#@tag.Tag</span> }
+        </div>
+    </div>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary" asp-action="Edit" asp-route-id="@Model.Id">Edit</a>
+        <a class="btn btn-outline-danger" asp-action="Delete" asp-route-id="@Model.Id">Delete</a>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card mb-3">
+            <div class="card-header fw-semibold">Detail</div>
+            <div class="card-body">
+                <dl class="row mb-0 small">
+                    <dt class="col-sm-3">Owner</dt><dd class="col-sm-3">@(Model.Owner ?? "—")</dd>
+                    <dt class="col-sm-3">Source</dt><dd class="col-sm-3">@Model.Source</dd>
+                    <dt class="col-sm-3">Recurrence</dt><dd class="col-sm-3">@Model.Recurrence.DisplayName()</dd>
+                    <dt class="col-sm-3">Review date</dt><dd class="col-sm-3">@(Model.ReviewDate?.ToString("dd MMM yyyy") ?? "—")</dd>
+                    <dt class="col-sm-3">Completion date</dt><dd class="col-sm-3">@(Model.CompletionDate?.ToString("dd MMM yyyy") ?? "—")</dd>
+                    <dt class="col-sm-3">Updated</dt><dd class="col-sm-3">@Model.UpdatedAt.ToString("dd MMM yyyy HH:mm")</dd>
+                    <dt class="col-sm-3">Target</dt><dd class="col-sm-9">@(Model.Target ?? "—")</dd>
+                    <dt class="col-sm-3">Success criteria</dt><dd class="col-sm-9">@(Model.SuccessCriteria ?? "—")</dd>
+                    <dt class="col-sm-3">Next step</dt><dd class="col-sm-9">@(Model.NextStep ?? "—")</dd>
+                    <dt class="col-sm-3">Check result</dt><dd class="col-sm-9">@(Model.CheckResult ?? "—")</dd>
+                    <dt class="col-sm-3">Notes</dt><dd class="col-sm-9" style="white-space: pre-wrap">@(Model.Notes ?? "—")</dd>
+                </dl>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header fw-semibold">Week grid</div>
+            <div class="card-body table-responsive">
+                <form asp-controller="WeekGrid" asp-action="Toggle" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="returnUrl" value="@returnUrl" />
+                <table class="table table-bordered table-sm text-center mb-0 week-grid">
+                    <thead><tr>
+                        @foreach (var week in weeks)
+                        {
+                            <th class="small">@week.Label<div class="text-muted fw-normal">@week.StartDate.ToString("dd MMM")</div></th>
+                        }
+                    </tr></thead>
+                    <tbody><tr>
+                        @foreach (var week in weeks)
+                        {
+                            <td>
+                                <button type="submit" name="cell" value="@Model.Id:@week.WeekIndex"
+                                        class="btn btn-sm btn-cell @(marks.ContainsKey(week.WeekIndex) ? "mark-" + marks[week.WeekIndex] : "")">
+                                    @(marks.TryGetValue(week.WeekIndex, out var mark) ? mark.ToString() : "·")
+                                </button>
+                            </td>
+                        }
+                    </tr></tbody>
+                </table>
+                </form>
+                <div class="form-text mt-2">Click a cell to cycle: blank &rarr; T (target) &rarr; R (revised) &rarr; A (actual) &rarr; blank.</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card mb-3">
+            <div class="card-header fw-semibold">Quick status</div>
+            <div class="card-body d-flex flex-wrap gap-2">
+                @foreach (var status in Enum.GetValues<ActionStatus>())
+                {
+                    <form asp-action="UpdateStatus" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@Model.Id" />
+                        <input type="hidden" name="status" value="@status" />
+                        <input type="hidden" name="returnUrl" value="@returnUrl" />
+                        <button type="submit" class="btn btn-sm @(Model.Status == status ? "btn-dark" : "btn-outline-secondary")">
+                            @status.DisplayName()
+                        </button>
+                    </form>
+                }
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header fw-semibold">Comments</div>
+            <ul class="list-group list-group-flush small">
+                @if (Model.Comments.Count == 0)
+                {
+                    <li class="list-group-item text-muted">No comments yet.</li>
+                }
+                @foreach (var comment in Model.Comments.OrderByDescending(c => c.At))
+                {
+                    <li class="list-group-item">
+                        <div style="white-space: pre-wrap">@comment.Text</div>
+                        <div class="text-muted">@comment.Author &middot; @comment.At.ToString("dd MMM yyyy HH:mm")</div>
+                    </li>
+                }
+            </ul>
+            <div class="card-body">
+                <form asp-action="AddComment" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@Model.Id" />
+                    <div class="input-group input-group-sm">
+                        <input class="form-control" name="text" placeholder="Add a comment" />
+                        <button class="btn btn-outline-primary" type="submit">Post</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header fw-semibold">History</div>
+            <ul class="list-group list-group-flush small">
+                @if (Model.History.Count == 0)
+                {
+                    <li class="list-group-item text-muted">No changes recorded.</li>
+                }
+                @foreach (var entry in Model.History.OrderByDescending(h => h.At))
+                {
+                    <li class="list-group-item">
+                        <strong>@entry.Field</strong>: @entry.FromValue <span class="text-muted">&rarr;</span> @entry.ToValue
+                        <div class="text-muted">@entry.By &middot; @entry.At.ToString("dd MMM yyyy HH:mm")</div>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,21 @@
+@model ActionItem
+@{
+    ViewData["Title"] = "Delete action";
+}
+
+<h1 class="h3 mb-3">Delete action</h1>
+
+<div class="card card-body">
+    <p>This permanently removes the action, its week marks, comments and history.</p>
+    <dl class="row small">
+        <dt class="col-sm-2">Serial</dt><dd class="col-sm-10">@Model.Serial</dd>
+        <dt class="col-sm-2">Action</dt><dd class="col-sm-10">@Model.Name</dd>
+        <dt class="col-sm-2">Project</dt><dd class="col-sm-10">@Model.WorkItem?.Project?.Name &middot; @Model.WorkItem?.Name</dd>
+        <dt class="col-sm-2">Status</dt><dd class="col-sm-10">@Model.Status.DisplayName()</dd>
+    </dl>
+    <form asp-action="Delete" asp-route-id="@Model.Id" method="post" class="d-flex gap-2">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-danger">Delete permanently</button>
+        <a class="btn btn-outline-secondary" asp-action="Details" asp-route-id="@Model.Id">Cancel</a>
+    </form>
+</div>

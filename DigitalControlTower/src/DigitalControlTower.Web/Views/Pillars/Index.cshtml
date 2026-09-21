@@ -1,0 +1,33 @@
+@model List<Pillar>
+@{
+    ViewData["Title"] = "Pillars";
+    var counts = ViewBag.ActionCounts as Dictionary<string, int> ?? new();
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Pillars</h1>
+    <a class="btn btn-primary" asp-action="Create">New pillar</a>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0">
+            <thead><tr><th>#</th><th>Pillar</th><th class="text-end">Projects</th><th class="text-end">Actions</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var pillar in Model)
+            {
+                <tr>
+                    <td class="text-muted">@pillar.SortOrder</td>
+                    <td><a asp-controller="Projects" asp-action="Index" asp-route-pillarId="@pillar.Id">@pillar.Name</a></td>
+                    <td class="text-end">@pillar.Projects.Count</td>
+                    <td class="text-end">@(counts.TryGetValue(pillar.Id, out var count) ? count : 0)</td>
+                    <td class="text-end text-nowrap">
+                        <a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@pillar.Id">Edit</a>
+                        <a class="btn btn-sm btn-outline-danger" asp-action="Delete" asp-route-id="@pillar.Id">Delete</a>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

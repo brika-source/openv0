@@ -1,0 +1,82 @@
+@model Project
+
+<div asp-validation-summary="ModelOnly" class="alert alert-danger d-none"></div>
+
+<div class="row g-3">
+    <div class="col-md-6">
+        <label asp-for="Name" class="form-label"></label>
+        <input asp-for="Name" class="form-control" />
+        <span asp-validation-for="Name" class="text-danger small"></span>
+    </div>
+    <div class="col-md-3">
+        <label asp-for="PillarId" class="form-label">Pillar</label>
+        <select asp-for="PillarId" class="form-select" asp-items="ViewBag.Pillars as Microsoft.AspNetCore.Mvc.Rendering.SelectList">
+            <option value="">— choose —</option>
+        </select>
+        <span asp-validation-for="PillarId" class="text-danger small"></span>
+    </div>
+    <div class="col-md-3">
+        <label asp-for="Status" class="form-label"></label>
+        <select asp-for="Status" class="form-select" asp-items="Html.GetEnumSelectList<ProjectStatus>()"></select>
+    </div>
+
+    <div class="col-md-3">
+        <label asp-for="Scope" class="form-label"></label>
+        <select asp-for="Scope" class="form-select" asp-items="Html.GetEnumSelectList<ProjectScope>()">
+            <option value="">— not set —</option>
+        </select>
+    </div>
+    <div class="col-md-3">
+        <label asp-for="DeptOwner" class="form-label"></label>
+        <input asp-for="DeptOwner" class="form-control" />
+    </div>
+    <div class="col-md-3">
+        <label asp-for="DigitalOwnerId" class="form-label">Digital owner</label>
+        <select asp-for="DigitalOwnerId" class="form-select" asp-items="ViewBag.Owners as Microsoft.AspNetCore.Mvc.Rendering.SelectList">
+            <option value="">— not set —</option>
+        </select>
+    </div>
+    <div class="col-md-3">
+        <label asp-for="Pm" class="form-label"></label>
+        <input asp-for="Pm" class="form-control" />
+    </div>
+
+    <div class="col-md-3">
+        <label asp-for="StartDate" class="form-label"></label>
+        <input asp-for="StartDate" class="form-control" type="date" />
+    </div>
+    <div class="col-md-3">
+        <label asp-for="DueDate" class="form-label"></label>
+        <input asp-for="DueDate" class="form-control" type="date" />
+    </div>
+    <div class="col-md-3">
+        <label asp-for="BaselineDate" class="form-label"></label>
+        <input asp-for="BaselineDate" class="form-control" type="date" />
+    </div>
+    <div class="col-md-3">
+        <label asp-for="ImplementationDate" class="form-label"></label>
+        <input asp-for="ImplementationDate" class="form-control" type="date" />
+    </div>
+
+    <div class="col-md-3">
+        <label asp-for="ActualCompletionDate" class="form-label"></label>
+        <input asp-for="ActualCompletionDate" class="form-control" type="date" />
+    </div>
+    <div class="col-md-3">
+        <label asp-for="CostAvoidance" class="form-label"></label>
+        <input asp-for="CostAvoidance" class="form-control" type="number" step="0.01" />
+    </div>
+    <div class="col-md-3">
+        <label asp-for="LabourHoursSaving" class="form-label"></label>
+        <input asp-for="LabourHoursSaving" class="form-control" type="number" step="0.01" />
+    </div>
+    <div class="col-md-3">
+        <label asp-for="ProductivityImprovement" class="form-label"></label>
+        <input asp-for="ProductivityImprovement" class="form-control" type="number" step="0.01" />
+    </div>
+
+    <div class="col-md-3">
+        <label asp-for="SavingsType" class="form-label"></label>
+        <input asp-for="SavingsType" class="form-control" />
+    </div>
+</div>

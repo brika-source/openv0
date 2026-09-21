@@ -1,0 +1,16 @@
+@model AppUser
+@{ ViewData["Title"] = "Delete user"; }
+
+<h1 class="h3 mb-3">Delete user</h1>
+
+<div class="card card-body" style="max-width: 40rem">
+    <p>
+        Deleting '@Model.Name' clears the digital owner on @Model.OwnedProjects.Count project(s);
+        the projects themselves are kept.
+    </p>
+    <form asp-action="Delete" asp-route-id="@Model.Id" method="post" class="d-flex gap-2">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-danger">Delete</button>
+        <a class="btn btn-outline-secondary" asp-action="Index">Cancel</a>
+    </form>
+</div>

@@ -1,0 +1,197 @@
+@model DashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h1 class="h3 mb-0">Control tower dashboard</h1>
+        <div class="text-muted small">
+            @if (Model.CurrentWeek is not null)
+            {
+                <span>Current tracking week: <strong>@Model.CurrentWeek.Label</strong> (starting @Model.CurrentWeek.StartDate.ToString("dd MMM yyyy"))</span>
+            }
+            else
+            {
+                <span>No tracking calendar configured.</span>
+            }
+        </div>
+    </div>
+    <a class="btn btn-primary" asp-controller="Actions" asp-action="Create">New action</a>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-2">
+        <div class="card kpi h-100"><div class="card-body">
+            <div class="text-muted small text-uppercase">Actions</div>
+            <div class="display-6">@Model.TotalActions</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="card kpi h-100"><div class="card-body">
+            <div class="text-muted small text-uppercase">Open</div>
+            <div class="display-6 text-primary">@Model.OpenActions</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="card kpi h-100"><div class="card-body">
+            <div class="text-muted small text-uppercase">Complete</div>
+            <div class="display-6 text-success">@Model.CompleteActions</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="card kpi h-100"><div class="card-body">
+            <div class="text-muted small text-uppercase">Past review date</div>
+            <div class="display-6 text-danger">@Model.OverdueActions</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="card kpi h-100"><div class="card-body">
+            <div class="text-muted small text-uppercase">Projects</div>
+            <div class="display-6">@Model.ProjectCount</div>
+            <div class="small text-muted">@Model.ActiveProjects active</div>
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="card kpi h-100"><div class="card-body">
+            <div class="text-muted small text-uppercase">Completion</div>
+            <div class="display-6">@Model.CompletionRate<span class="fs-6">%</span></div>
+        </div></div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header fw-semibold">Pillars</div>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0 align-middle">
+                    <thead><tr>
+                        <th>Pillar</th><th class="text-end">Projects</th><th class="text-end">Actions</th>
+                        <th class="text-end">At risk</th><th style="width: 30%">Progress</th>
+                    </tr></thead>
+                    <tbody>
+                    @foreach (var pillar in Model.Pillars)
+                    {
+                        <tr>
+                            <td><a asp-controller="Projects" asp-action="Index" asp-route-pillarId="@pillar.Id">@pillar.Name</a></td>
+                            <td class="text-end">@pillar.Projects</td>
+                            <td class="text-end">@pillar.Actions</td>
+                            <td class="text-end">
+                                @if (pillar.AtRisk > 0)
+                                {
+                                    <span class="badge bg-danger">@pillar.AtRisk</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">0</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="progress" style="height: 1.1rem">
+                                    <div class="progress-bar bg-success" role="progressbar"
+                                         style="width: @(pillar.Progress.ToString(System.Globalization.CultureInfo.InvariantCulture))%">
+                                        @pillar.Progress%
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header fw-semibold">Status mix</div>
+            <div class="card-body">
+                @foreach (var item in Model.StatusBreakdown)
+                {
+                    var share = Model.TotalActions == 0 ? 0 : Math.Round(100m * item.Count / Model.TotalActions, 1);
+                    <div class="d-flex justify-content-between small">
+                        <span><span class="badge @item.Status.BadgeClass()">@item.Status.DisplayName()</span></span>
+                        <span class="text-muted">@item.Count (@share%)</span>
+                    </div>
+                    <div class="progress mb-2" style="height: .5rem">
+                        <div class="progress-bar @item.Status.BadgeClass()" role="progressbar"
+                             style="width: @(share.ToString(System.Globalization.CultureInfo.InvariantCulture))%"></div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mt-1">
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header fw-semibold">Needs attention</div>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0 align-middle">
+                    <thead><tr><th>Serial</th><th>Action</th><th>Owner</th><th>Review</th><th>Status</th></tr></thead>
+                    <tbody>
+                    @if (Model.Attention.Count == 0)
+                    {
+                        <tr><td colspan="5" class="text-muted text-center py-3">Nothing overdue or at risk.</td></tr>
+                    }
+                    @foreach (var action in Model.Attention)
+                    {
+                        <tr>
+                            <td><a asp-controller="Actions" asp-action="Details" asp-route-id="@action.Id">@action.Serial</a></td>
+                            <td>
+                                @action.Name
+                                <div class="text-muted small">@action.WorkItem?.Project?.Name &middot; @action.WorkItem?.Name</div>
+                            </td>
+                            <td>@action.Owner</td>
+                            <td>@(action.ReviewDate?.ToString("dd MMM") ?? "—")</td>
+                            <td><partial name="_StatusBadge" model="action.Status" /></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="card mb-3">
+            <div class="card-header fw-semibold">Owner load</div>
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead><tr><th>Owner</th><th class="text-end">Open</th><th class="text-end">Complete</th></tr></thead>
+                    <tbody>
+                    @foreach (var owner in Model.TopOwners)
+                    {
+                        <tr>
+                            <td><a asp-controller="Actions" asp-action="Index" asp-route-owner="@owner.Owner">@owner.Owner</a></td>
+                            <td class="text-end">@owner.Open</td>
+                            <td class="text-end text-success">@owner.Complete</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header fw-semibold">Recent changes</div>
+            <ul class="list-group list-group-flush small">
+                @if (Model.RecentActivity.Count == 0)
+                {
+                    <li class="list-group-item text-muted">No changes recorded yet.</li>
+                }
+                @foreach (var entry in Model.RecentActivity)
+                {
+                    <li class="list-group-item">
+                        <a asp-controller="Actions" asp-action="Details" asp-route-id="@entry.ActionItemId">@entry.ActionItem?.Serial</a>
+                        <span class="text-muted">@entry.Field</span>
+                        @entry.FromValue <span class="text-muted">&rarr;</span> <strong>@entry.ToValue</strong>
+                        <div class="text-muted">@entry.By &middot; @entry.At.ToString("dd MMM yyyy HH:mm")</div>
+                    </li>
+                }
+            </ul>
+        </div>
+    </div>
+</div>

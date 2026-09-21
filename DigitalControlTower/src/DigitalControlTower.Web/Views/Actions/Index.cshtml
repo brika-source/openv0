@@ -1,0 +1,116 @@
+@model ActionsIndexViewModel
+@{
+    ViewData["Title"] = "Actions";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Actions <span class="text-muted fs-6">@Model.TotalCount found</span></h1>
+    <a class="btn btn-primary" asp-action="Create">New action</a>
+</div>
+
+<form method="get" class="card card-body mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-3">
+            <label class="form-label small mb-1">Search</label>
+            <input class="form-control form-control-sm" name="Search" value="@Model.Search" placeholder="serial, action, owner, notes" />
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small mb-1">Pillar</label>
+            <select class="form-select form-select-sm" name="PillarId" asp-items="Model.Pillars">
+                <option value="">All pillars</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small mb-1">Project</label>
+            <select class="form-select form-select-sm" name="ProjectId" asp-items="Model.Projects">
+                <option value="">All projects</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small mb-1">Owner</label>
+            <select class="form-select form-select-sm" name="Owner" asp-items="Model.Owners">
+                <option value="">All owners</option>
+            </select>
+        </div>
+        <div class="col-md-1">
+            <label class="form-label small mb-1">Status</label>
+            <select class="form-select form-select-sm" name="Status" asp-items="Html.GetEnumSelectList<ActionStatus>()">
+                <option value="">All</option>
+            </select>
+        </div>
+        <div class="col-md-1">
+            <label class="form-label small mb-1">Priority</label>
+            <select class="form-select form-select-sm" name="Priority" asp-items="Html.GetEnumSelectList<Priority>()">
+                <option value="">All</option>
+            </select>
+        </div>
+        <div class="col-md-1 d-grid">
+            <button class="btn btn-sm btn-dark" type="submit">Filter</button>
+        </div>
+    </div>
+    @if (Model.HasFilters)
+    {
+        <div class="mt-2"><a class="small" asp-action="Index">Clear filters</a></div>
+    }
+</form>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0">
+            <thead>
+            <tr>
+                <th>Serial</th><th>Action</th><th>Project / work item</th><th>Owner</th>
+                <th>Qtr</th><th>Priority</th><th>Review</th><th>Status</th><th></th>
+            </tr>
+            </thead>
+            <tbody>
+            @if (Model.Actions.Count == 0)
+            {
+                <tr><td colspan="9" class="text-center text-muted py-4">No actions match these filters.</td></tr>
+            }
+            @foreach (var action in Model.Actions)
+            {
+                <tr>
+                    <td class="text-nowrap"><a asp-action="Details" asp-route-id="@action.Id">@action.Serial</a></td>
+                    <td>@action.Name</td>
+                    <td class="small text-muted">
+                        @action.WorkItem?.Project?.Name
+                        <div>@action.WorkItem?.Name</div>
+                    </td>
+                    <td class="text-nowrap">@action.Owner</td>
+                    <td>@(action.Quarter == Quarter.None ? "" : action.Quarter.DisplayName())</td>
+                    <td><span class="badge @action.Priority.BadgeClass()">@action.Priority.DisplayName()</span></td>
+                    <td class="text-nowrap">@(action.ReviewDate?.ToString("dd MMM yy") ?? "—")</td>
+                    <td><partial name="_StatusBadge" model="action.Status" /></td>
+                    <td class="text-end text-nowrap">
+                        <a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@action.Id">Edit</a>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@if (Model.TotalPages > 1)
+{
+    <nav class="mt-3">
+        <ul class="pagination pagination-sm">
+            @for (var pageNumber = 1; pageNumber <= Model.TotalPages; pageNumber++)
+            {
+                <li class="page-item @(pageNumber == Model.Page ? "active" : "")">
+                    <a class="page-link"
+                       asp-action="Index"
+                       asp-route-Page="@pageNumber"
+                       asp-route-Search="@Model.Search"
+                       asp-route-PillarId="@Model.PillarId"
+                       asp-route-ProjectId="@Model.ProjectId"
+                       asp-route-Owner="@Model.Owner"
+                       asp-route-Status="@Model.Status"
+                       asp-route-Priority="@Model.Priority"
+                       asp-route-Quarter="@Model.Quarter">@pageNumber</a>
+                </li>
+            }
+        </ul>
+    </nav>
+}

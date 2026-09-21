@@ -1,0 +1,79 @@
+@model ActionItem
+
+<div asp-validation-summary="ModelOnly" class="alert alert-danger d-none"></div>
+
+<div class="row g-3">
+    <div class="col-md-8">
+        <label asp-for="Name" class="form-label"></label>
+        <input asp-for="Name" class="form-control" />
+        <span asp-validation-for="Name" class="text-danger small"></span>
+    </div>
+    <div class="col-md-4">
+        <label asp-for="WorkItemId" class="form-label">Pillar / project / work item</label>
+        <select asp-for="WorkItemId" class="form-select" asp-items="ViewBag.WorkItems as Microsoft.AspNetCore.Mvc.Rendering.SelectList">
+            <option value="">— choose —</option>
+        </select>
+        <span asp-validation-for="WorkItemId" class="text-danger small"></span>
+    </div>
+
+    <div class="col-md-3">
+        <label asp-for="Owner" class="form-label"></label>
+        <input asp-for="Owner" class="form-control" list="owner-suggestions" />
+    </div>
+    <div class="col-md-2">
+        <label asp-for="Status" class="form-label"></label>
+        <select asp-for="Status" class="form-select" asp-items="Html.GetEnumSelectList<ActionStatus>()"></select>
+    </div>
+    <div class="col-md-2">
+        <label asp-for="Priority" class="form-label"></label>
+        <select asp-for="Priority" class="form-select" asp-items="Html.GetEnumSelectList<Priority>()"></select>
+    </div>
+    <div class="col-md-2">
+        <label asp-for="Quarter" class="form-label"></label>
+        <select asp-for="Quarter" class="form-select" asp-items="Html.GetEnumSelectList<Quarter>()"></select>
+    </div>
+    <div class="col-md-3">
+        <label asp-for="Recurrence" class="form-label"></label>
+        <select asp-for="Recurrence" class="form-select" asp-items="Html.GetEnumSelectList<Recurrence>()"></select>
+    </div>
+
+    <div class="col-md-3">
+        <label asp-for="Source" class="form-label"></label>
+        <input asp-for="Source" class="form-control" />
+    </div>
+    <div class="col-md-3">
+        <label asp-for="ReviewDate" class="form-label"></label>
+        <input asp-for="ReviewDate" class="form-control" type="date" />
+    </div>
+    <div class="col-md-3">
+        <label asp-for="CompletionDate" class="form-label"></label>
+        <input asp-for="CompletionDate" class="form-control" type="date" />
+    </div>
+    <div class="col-md-3">
+        <label class="form-label">Tags (comma separated)</label>
+        <input name="tags" class="form-control" value="@ViewBag.Tags" />
+    </div>
+
+    <div class="col-md-6">
+        <label asp-for="Target" class="form-label"></label>
+        <input asp-for="Target" class="form-control" />
+    </div>
+    <div class="col-md-6">
+        <label asp-for="NextStep" class="form-label"></label>
+        <input asp-for="NextStep" class="form-control" />
+    </div>
+
+    <div class="col-md-6">
+        <label asp-for="SuccessCriteria" class="form-label"></label>
+        <textarea asp-for="SuccessCriteria" class="form-control" rows="2"></textarea>
+    </div>
+    <div class="col-md-6">
+        <label asp-for="CheckResult" class="form-label"></label>
+        <textarea asp-for="CheckResult" class="form-control" rows="2"></textarea>
+    </div>
+
+    <div class="col-12">
+        <label asp-for="Notes" class="form-label"></label>
+        <textarea asp-for="Notes" class="form-control" rows="3"></textarea>
+    </div>
+</div>

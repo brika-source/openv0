@@ -1,0 +1,13 @@
+@model WorkItem
+@{ ViewData["Title"] = "Delete work item"; }
+
+<h1 class="h3 mb-3">Delete work item</h1>
+
+<div class="card card-body" style="max-width: 40rem">
+    <p class="text-danger">This removes '@Model.Name' and its @Model.Actions.Count action(s).</p>
+    <form asp-action="Delete" asp-route-id="@Model.Id" method="post" class="d-flex gap-2">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-danger">Delete permanently</button>
+        <a class="btn btn-outline-secondary" asp-controller="Projects" asp-action="Details" asp-route-id="@Model.ProjectId">Cancel</a>
+    </form>
+</div>

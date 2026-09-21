@@ -1,0 +1,11 @@
+# Build output
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+*.user
+*.suo
+
+# Local configuration that should not be committed
+appsettings.Local.json
+appsettings.*.Local.json

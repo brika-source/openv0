@@ -1,0 +1,96 @@
+@model WeekGridViewModel
+@{
+    ViewData["Title"] = "Week grid";
+    var returnUrl = Context.Request.Path + Context.Request.QueryString;
+    var today = DateOnly.FromDateTime(DateTime.UtcNow);
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">14-week tracking grid</h1>
+    <span class="text-muted small">@Model.Rows.Count of @Model.TotalCount action(s) shown</span>
+</div>
+
+<form method="get" class="card card-body mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-3">
+            <label class="form-label small mb-1">Pillar</label>
+            <select class="form-select form-select-sm" name="pillarId" asp-items="Model.Pillars">
+                <option value="">All pillars</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small mb-1">Project</label>
+            <select class="form-select form-select-sm" name="projectId" asp-items="Model.Projects">
+                <option value="">All projects</option>
+            </select>
+        </div>
+        <div class="col-md-3 form-check ms-2">
+            <input class="form-check-input" type="checkbox" name="openOnly" value="true" id="openOnly" checked="@Model.OpenOnly" />
+            <label class="form-check-label small" for="openOnly">Open actions only</label>
+        </div>
+        <div class="col-md-2 d-grid">
+            <button class="btn btn-sm btn-dark" type="submit">Apply</button>
+        </div>
+    </div>
+</form>
+
+@if (Model.IsTruncated)
+{
+    <div class="alert alert-warning py-2 small">
+        Showing the first @Model.MaxRows of @Model.TotalCount actions. Filter by pillar or project to see the rest.
+    </div>
+}
+
+<form asp-action="Toggle" method="post">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="returnUrl" value="@returnUrl" />
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered align-middle mb-0 week-grid">
+            <thead class="table-light">
+            <tr>
+                <th style="min-width: 7rem">Serial</th>
+                <th style="min-width: 18rem">Action</th>
+                <th style="min-width: 10rem">Owner</th>
+                <th style="min-width: 8rem">Status</th>
+                @foreach (var week in Model.Weeks)
+                {
+                    var isCurrent = week.StartDate <= today && today < week.StartDate.AddDays(7);
+                    <th class="text-center small @(isCurrent ? "table-warning" : "")">
+                        @week.Label
+                        <div class="fw-normal text-muted">@week.StartDate.ToString("dd MMM")</div>
+                    </th>
+                }
+            </tr>
+            </thead>
+            <tbody>
+            @if (Model.Rows.Count == 0)
+            {
+                <tr><td colspan="@(4 + Model.Weeks.Count)" class="text-center text-muted py-4">No actions match this filter.</td></tr>
+            }
+            @foreach (var row in Model.Rows)
+            {
+                <tr>
+                    <td class="text-nowrap"><a asp-controller="Actions" asp-action="Details" asp-route-id="@row.Action.Id">@row.Action.Serial</a></td>
+                    <td>
+                        @row.Action.Name
+                        <div class="small text-muted">@row.ProjectName &middot; @row.WorkItemName</div>
+                    </td>
+                    <td class="small">@row.Action.Owner</td>
+                    <td><partial name="_StatusBadge" model="row.Action.Status" /></td>
+                    @foreach (var week in Model.Weeks)
+                    {
+                        var mark = row.Marks.TryGetValue(week.WeekIndex, out var m) ? m.ToString() : null;
+                        <td class="p-0"><button type="submit" name="cell" value="@row.Action.Id:@week.WeekIndex" class="btn-cell @(mark is null ? "" : "mark-" + mark)">@(mark ?? "·")</button></td>
+                    }
+                </tr>
+            }
+            </tbody>
+            </table>
+        </div>
+    </div>
+</form>
+
+<div class="form-text mt-2">
+    Click a cell to cycle it: blank &rarr; <strong>T</strong> target &rarr; <strong>R</strong> revised &rarr; <strong>A</strong> actual &rarr; blank.
+</div>
