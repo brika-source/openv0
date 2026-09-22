@@ -183,7 +183,11 @@ public class JsonExportSeeder(ApplicationDbContext db, IWebHostEnvironment env, 
             NextStep = Str(a, "nextStep"),
             Notes = Str(a, "notes"),
             CheckResult = Str(a, "checkResult"),
-            DueDate = Date(Str(a, "reviewDate")),
+            // The board's due date is "target"; "reviewDate" is a rarely used
+            // second date, kept only as a fallback. Reading reviewDate alone
+            // left almost every action with no due date, which silently
+            // disabled the reminders and the overdue counts.
+            DueDate = Date(Str(a, "target")) ?? Date(Str(a, "reviewDate")),
             CompletionDate = Date(Str(a, "completionDate")),
             CreatedAt = created,
             UpdatedAt = Stamp(Str(a, "updatedAt")) ?? created

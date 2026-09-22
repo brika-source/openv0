@@ -178,6 +178,19 @@ def qs(value, fallback):
     return result if result != "NULL" else q(fallback)
 
 
+def first_date(*values):
+    """The first value that parses as a date, else SQL NULL.
+
+    date() renders the empty case as the string "NULL", which is truthy, so
+    the candidates cannot simply be or-ed together.
+    """
+    for value in values:
+        rendered = date(value)
+        if rendered != "NULL":
+            return rendered
+    return "NULL"
+
+
 def date(value):
     text = (value or "").strip()
     if not text:
@@ -304,7 +317,10 @@ def main(source, target):
                         qs(action.get("source"), "90-Day"),
                         q(action.get("target")), q(action.get("successCriteria")),
                         q(action.get("nextStep")), q(action.get("notes")), q(action.get("checkResult")),
-                        date(action.get("reviewDate")), date(action.get("completionDate")),
+                        # "target" is the board's due date; "reviewDate" is a
+                        # rarely used second date kept only as a fallback.
+                        first_date(action.get("target"), action.get("reviewDate")),
+                        date(action.get("completionDate")),
                         created, stamp(action.get("updatedAt")) if action.get("updatedAt") else created,
                     ])
 

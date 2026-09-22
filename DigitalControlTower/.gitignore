@@ -9,3 +9,4 @@ obj/
 # Local configuration that should not be committed
 appsettings.Local.json
 appsettings.*.Local.json
+__pycache__/

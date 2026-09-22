@@ -16,7 +16,7 @@ person is never split across "Hassan Ismail", "Hassan ismail" and "hassan" again
 
 | Screen | What it is for |
 |---|---|
-| **Dashboard** | KPIs, pillar progress, load per handle, what needs attention — plus today's **Digital team meeting**, the value delivered and the reminder queue |
+| **Dashboard** | KPIs, pillar progress, what needs attention — plus **Workload by owner**, **Projects over time**, today's **Digital team meeting**, the value delivered and the reminder queue |
 | **Meetings action plan** | Every digital team meeting: participants, minutes, and the actions raised. Opens straight on today's date |
 | **Pillars / Projects / Actions** | The 90-day plan, searchable and filterable, with comments and a full audit trail |
 | **Week grid** | The 14-week tracking matrix; click a cell to cycle blank → T → R → A |

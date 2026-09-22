@@ -16,6 +16,8 @@ hero, award banner, pillar cards, tabs, tables and both themes are the same file
 | **Reminders** (Due Soon tab) | One mail per owner, two days before the due date, with anything overdue in the same message. "Email in Outlook" opens it addressed and written; "Copy text" is the fallback |
 | **What's missing** (Reports tab) | Actions with no date, actions with no owner, projects with no value, projects with no items, items with no actions |
 | **Value added per owner** (Portfolio Health) | Hard, soft and total value per person, beside the portfolio totals already there |
+| **Workload by owner** (Home) | One stacked bar per person — complete, on track, needs attention, overdue. Click a row to open that person's card. An action with two owners counts for each, so the rows can add up to more than 297 |
+| **Projects over time** (Home) | A month-by-month timeline of when each project runs, coloured by pillar, with today marked |
 
 ## Where a meeting action is filed
 
@@ -36,6 +38,19 @@ The board carries the **22 Sep 2026** export: 6 pillars, 41 projects, 98 master 
 items, 297 actions and the 5 handles, with the priorities, quarters and change history
 the export holds. This is the same data the database scripts and the web app load, so the
 single file and the server show the same tower.
+
+## What the timeline can and cannot show
+
+A project is placed by its own start/due dates when it has them, and otherwise
+by the earliest and latest dates on its actions. **No project in the plan
+carries a start date yet**, so in practice every bar comes from action dates.
+17 of the 41 projects can be placed; the other 24 carry no date anywhere and
+are counted under the chart rather than quietly dropped. Fill in project dates,
+or action target dates, and they appear on their own.
+
+Row creation timestamps are deliberately not used. They record when somebody
+typed a row, not when the work runs, and the database fills them in at import
+for every row — counting them would drag every project back to import day.
 
 ## Saving still works the same way
 

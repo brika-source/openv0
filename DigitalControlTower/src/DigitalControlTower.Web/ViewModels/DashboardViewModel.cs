@@ -35,8 +35,36 @@ public class DashboardViewModel
     public DateOnly ReminderTargetDate { get; set; }
     public int ActionsWithoutDueDate { get; set; }
 
+    /// <summary>Every person carrying work, heaviest first.</summary>
+    public IReadOnlyList<WorkloadRow> Workload { get; set; } = [];
+    /// <summary>Dated projects, earliest start first.</summary>
+    public IReadOnlyList<TimelineRow> Timeline { get; set; } = [];
+    public DateOnly TimelineStart { get; set; }
+    public DateOnly TimelineEnd { get; set; }
+    /// <summary>Projects with no date anywhere, so nothing to place on the timeline.</summary>
+    public int UndatedProjects { get; set; }
+
     public record StatusCount(ActionStatus Status, int Count);
     public record OwnerLoad(string Owner, int Open, int Complete);
+
+    /// <summary>Workload for one person, split the way the board splits it.</summary>
+    /// <remarks>
+    /// An action owned jointly is counted for each of its owners, so the rows
+    /// can add up to more than the number of actions.
+    /// </remarks>
+    public record WorkloadRow(string Handle, int Complete, int OnTrack, int Attention, int Overdue)
+    {
+        public int Total => Complete + OnTrack + Attention + Overdue;
+    }
+
+    /// <summary>When a project runs, for the timeline on the dashboard.</summary>
+    /// <remarks>
+    /// <see cref="FromOwnDates"/> is false when the span had to be derived from
+    /// the dates on the project's actions, because the project itself carries none.
+    /// </remarks>
+    public record TimelineRow(
+        string ProjectId, string ProjectName, string PillarName, int PillarIndex,
+        DateOnly Start, DateOnly End, bool FromOwnDates);
 
     public class PillarSummary
     {

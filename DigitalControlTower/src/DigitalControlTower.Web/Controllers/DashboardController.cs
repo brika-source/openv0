@@ -11,6 +11,9 @@ public class DashboardController(ApplicationDbContext db, ReminderService remind
 {
     private static readonly ActionStatus[] ClosedStatuses = [ActionStatus.Complete, ActionStatus.Cancelled];
 
+    /// <summary>Row label for actions that have no owner at all.</summary>
+    private const string UnassignedHandle = "no owner yet";
+
     public async Task<IActionResult> Index(CancellationToken ct)
     {
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
@@ -53,6 +56,91 @@ public class DashboardController(ApplicationDbContext db, ReminderService remind
         var topOwners = ownerLoads
             .Select(o => new DashboardViewModel.OwnerLoad(o.Owner, o.Open, o.Complete))
             .ToList();
+
+        // Workload per person, in the same four buckets the board uses. Joint
+        // ownership counts for each owner, which the card says on its face.
+        var ownerRows = await db.ActionOwners
+            .Select(o => new
+            {
+                Handle = o.User!.Handle,
+                o.ActionItem!.Status,
+                o.ActionItem!.DueDate
+            })
+            .ToListAsync(ct);
+
+        // Actions nobody owns get their own row, and everyone on file appears
+        // even with nothing on their plate — both are what makes the chart
+        // usable for balancing work rather than just admiring it.
+        var unowned = await db.Actions
+            .Where(a => !a.Owners.Any())
+            .Select(a => new { Handle = UnassignedHandle, a.Status, a.DueDate })
+            .ToListAsync(ct);
+
+        var idleHandles = await db.Users
+            .Where(u => !u.ActionOwnerships.Any())
+            .Select(u => u.Handle)
+            .ToListAsync(ct);
+
+        var workload = ownerRows.Concat(unowned)
+            .GroupBy(o => o.Handle)
+            .Select(g => new DashboardViewModel.WorkloadRow(
+                Handle: g.Key,
+                Complete: g.Count(o => o.Status == ActionStatus.Complete),
+                Overdue: g.Count(o => o.Status != ActionStatus.Complete && o.Status != ActionStatus.Cancelled
+                                      && o.DueDate != null && o.DueDate < today),
+                Attention: g.Count(o => o.Status != ActionStatus.Complete && o.Status != ActionStatus.Cancelled
+                                        && !(o.DueDate != null && o.DueDate < today)
+                                        && (o.Status == ActionStatus.AtRisk || o.Status == ActionStatus.Delayed
+                                            || o.Status == ActionStatus.NeedsDefinition)),
+                OnTrack: g.Count(o => o.Status != ActionStatus.Complete && o.Status != ActionStatus.Cancelled
+                                      && !(o.DueDate != null && o.DueDate < today)
+                                      && o.Status != ActionStatus.AtRisk && o.Status != ActionStatus.Delayed
+                                      && o.Status != ActionStatus.NeedsDefinition)))
+            .Concat(idleHandles.Select(h => new DashboardViewModel.WorkloadRow(h, 0, 0, 0, 0)))
+            .OrderByDescending(r => r.Total)
+            .ThenBy(r => r.Handle == UnassignedHandle ? 1 : 0)
+            .ThenBy(r => r.Handle)
+            .ToList();
+
+        // Project start and due dates are mostly empty in the plan, so a span
+        // falls back to the dates carried by the project's own actions.
+        // Only the ends of each range are needed, so they are taken as scalar
+        // min/max aggregates: EF cannot translate a list built inside a query.
+        var projectDates = await db.Projects
+            .Select(p => new
+            {
+                p.Id,
+                p.Name,
+                PillarName = p.Pillar!.Name,
+                p.Pillar!.SortOrder,
+                p.StartDate,
+                p.DueDate,
+                p.BaselineDate,
+                p.ImplementationDate,
+                p.ActualCompletionDate,
+                ActionDueMin = p.Items.SelectMany(i => i.Actions).Min(a => a.DueDate),
+                ActionDueMax = p.Items.SelectMany(i => i.Actions).Max(a => a.DueDate),
+                ActionDoneMin = p.Items.SelectMany(i => i.Actions).Min(a => a.CompletionDate),
+                ActionDoneMax = p.Items.SelectMany(i => i.Actions).Max(a => a.CompletionDate)
+            })
+            .ToListAsync(ct);
+
+        var timeline = new List<DashboardViewModel.TimelineRow>();
+        var undated = 0;
+        foreach (var p in projectDates)
+        {
+            var own = new[] { p.StartDate, p.DueDate, p.BaselineDate, p.ImplementationDate, p.ActualCompletionDate }
+                .Where(d => d.HasValue).Select(d => d!.Value).ToList();
+            var all = own
+                .Concat(new[] { p.ActionDueMin, p.ActionDueMax, p.ActionDoneMin, p.ActionDoneMax }
+                    .Where(d => d.HasValue).Select(d => d!.Value))
+                .ToList();
+            if (all.Count == 0) { undated++; continue; }
+            timeline.Add(new DashboardViewModel.TimelineRow(
+                p.Id, p.Name, p.PillarName, p.SortOrder,
+                all.Min(), all.Max(), own.Count > 0));
+        }
+        timeline = timeline.OrderBy(r => r.Start).ThenBy(r => r.End).ToList();
 
         var attention = await db.Actions
             .Include(a => a.Owners).ThenInclude(o => o.User)
@@ -124,7 +212,12 @@ public class DashboardController(ApplicationDbContext db, ReminderService remind
                                                     && v.Money == 0 && v.Hours == 0 && v.Productivity == 0),
             ActionsWithoutDueDate = await db.Actions.CountAsync(
                 a => a.DueDate == null
-                     && a.Status != ActionStatus.Complete && a.Status != ActionStatus.Cancelled, ct)
+                     && a.Status != ActionStatus.Complete && a.Status != ActionStatus.Cancelled, ct),
+            Workload = workload,
+            Timeline = timeline,
+            TimelineStart = timeline.Count > 0 ? timeline.Min(r => r.Start) : today,
+            TimelineEnd = timeline.Count > 0 ? timeline.Max(r => r.End) : today,
+            UndatedProjects = undated
         };
 
         var batches = await reminders.PreviewAsync(today, ct);

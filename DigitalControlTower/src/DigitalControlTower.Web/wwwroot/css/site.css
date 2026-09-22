@@ -51,3 +51,49 @@ body {
 }
 a.handle:hover { background-color: #dde4ff; text-decoration: none; }
 td .handle + .handle, dd .handle + .handle { margin-left: .25rem; }
+
+/* --- Dashboard charts: workload by owner, and projects over time --------
+   The four plan states, stepped so "needs attention" and "overdue" stay
+   apart for colour-blind readers when they sit side by side in one bar.
+   The pillar tints mirror the single-file board so both editions read the
+   same; a bar's identity comes from its own row label, never the tint. */
+:root {
+    --chart-complete: #1f6fb3;
+    --chart-ontrack: #15803d;
+    --chart-attention: #cf8a00;
+    --chart-overdue: #b91c1c;
+    --chart-grid: #e6e9f0;
+    --pillar-0: #1f6fb3; --pillar-1: #0e7a72; --pillar-2: #b25a0e;
+    --pillar-3: #c23d1e; --pillar-4: #6b3fa0; --pillar-5: #227a4a;
+    --pillar-6: #3f5c86; --pillar-7: #a03868; --pillar-8: #3e4fa0;
+}
+
+.chart-legend { display: flex; gap: 14px; flex-wrap: wrap; }
+.chart-key { display: inline-flex; align-items: center; gap: 6px; font-size: .8rem; color: #6c757d; }
+.chart-key i { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+
+.wl-row { display: grid; grid-template-columns: 170px 1fr 52px; align-items: center; gap: 10px; padding: 3px 0; }
+.wl-row + .wl-row { border-top: 1px solid #eef0f4; }
+.wl-name { text-align: right; font-size: .8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wl-track { display: flex; height: 16px; align-items: stretch; }
+.wl-seg { min-width: 2px; border-radius: 3px; }
+.wl-seg + .wl-seg { margin-left: 2px; }
+.wl-total { font-size: .8rem; font-weight: 600; }
+
+.tl-scroll { overflow-x: auto; padding-bottom: 4px; }
+.tl-grid { min-width: 760px; }
+.tl-axis { display: grid; grid-template-columns: 232px 1fr; gap: 10px; margin-bottom: 6px; }
+.tl-axis-months { position: relative; height: 16px; }
+.tl-axis-month { position: absolute; top: 0; font-size: .66rem; color: #8a8fa3; white-space: nowrap; transform: translateX(2px); }
+.tl-row { display: grid; grid-template-columns: 232px 1fr; align-items: center; gap: 10px; }
+.tl-row + .tl-row { margin-top: 3px; }
+.tl-label {
+    font-size: .8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    display: flex; align-items: center; gap: 6px; text-decoration: none; color: #212529;
+}
+.tl-label:hover { text-decoration: underline; }
+.tl-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; display: inline-block; }
+.tl-track { position: relative; height: 18px; }
+.tl-tick { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--chart-grid); }
+.tl-today { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--chart-overdue); opacity: .7; }
+.tl-bar { position: absolute; top: 3px; height: 12px; border-radius: 4px; min-width: 4px; }

@@ -60,6 +60,169 @@
     </div>
 </div>
 
+@{
+    // The axis covers whole months, so the last bar has room to sit inside it
+    // and the final month is drawn in full — the same span the board uses.
+    var tlAxisStart = new DateOnly(Model.TimelineStart.Year, Model.TimelineStart.Month, 1);
+    var tlAxisEnd = new DateOnly(Model.TimelineEnd.Year, Model.TimelineEnd.Month, 1).AddMonths(1);
+    var tlDays = Math.Max(1, tlAxisEnd.DayNumber - tlAxisStart.DayNumber);
+    double tlPos(DateOnly d) => (d.DayNumber - tlAxisStart.DayNumber) * 100.0 / tlDays;
+    var tlToday = DateOnly.FromDateTime(DateTime.UtcNow);
+    var wlMax = Model.Workload.Count > 0 ? Model.Workload.Max(r => r.Total) : 0;
+    var tlMonths = new List<DateOnly>();
+    if (Model.Timeline.Count > 0)
+    {
+        var cursor = tlAxisStart;
+        while (cursor < tlAxisEnd) { tlMonths.Add(cursor); cursor = cursor.AddMonths(1); }
+    }
+}
+
+<div class="card mb-3">
+    <div class="card-header d-flex flex-wrap align-items-baseline gap-2">
+        <span class="fw-semibold">Workload by owner</span>
+        <span class="text-muted small">Open and closed 90-day actions per person &middot; an action with two owners counts for each</span>
+    </div>
+    <div class="card-body">
+        @if (wlMax == 0)
+        {
+            <div class="text-muted small">No action has an owner yet.</div>
+        }
+        else
+        {
+            <div class="chart-legend mb-3">
+                <span class="chart-key"><i style="background:var(--chart-complete)"></i>Complete</span>
+                <span class="chart-key"><i style="background:var(--chart-ontrack)"></i>On track</span>
+                <span class="chart-key"><i style="background:var(--chart-attention)"></i>Needs attention</span>
+                <span class="chart-key"><i style="background:var(--chart-overdue)"></i>Overdue</span>
+            </div>
+            @foreach (var row in Model.Workload)
+            {
+                <div class="wl-row">
+                    <a class="wl-name handle" asp-controller="Actions" asp-action="Index" asp-route-Owner="@row.Handle">@row.Handle</a>
+                    <div class="wl-track">
+                        @if (row.Complete > 0)
+                        {
+                            <span class="wl-seg" style="width:@(((double)row.Complete / wlMax * 100).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))%;background:var(--chart-complete)" title="@row.Handle — Complete: @row.Complete"></span>
+                        }
+                        @if (row.OnTrack > 0)
+                        {
+                            <span class="wl-seg" style="width:@(((double)row.OnTrack / wlMax * 100).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))%;background:var(--chart-ontrack)" title="@row.Handle — On track: @row.OnTrack"></span>
+                        }
+                        @if (row.Attention > 0)
+                        {
+                            <span class="wl-seg" style="width:@(((double)row.Attention / wlMax * 100).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))%;background:var(--chart-attention)" title="@row.Handle — Needs attention: @row.Attention"></span>
+                        }
+                        @if (row.Overdue > 0)
+                        {
+                            <span class="wl-seg" style="width:@(((double)row.Overdue / wlMax * 100).ToString("0.##", System.Globalization.CultureInfo.InvariantCulture))%;background:var(--chart-overdue)" title="@row.Handle — Overdue: @row.Overdue"></span>
+                        }
+                    </div>
+                    <div class="wl-total">@row.Total</div>
+                </div>
+            }
+            <details class="mt-3">
+                <summary class="small text-muted">Show the numbers as a table</summary>
+                <div class="table-responsive mt-2">
+                    <table class="table table-sm mb-0">
+                        <thead><tr><th>Owner</th><th class="text-end">Complete</th><th class="text-end">On track</th><th class="text-end">Needs attention</th><th class="text-end">Overdue</th><th class="text-end">Total</th></tr></thead>
+                        <tbody>
+                        @foreach (var row in Model.Workload)
+                        {
+                            <tr>
+                                <td class="handle">@row.Handle</td>
+                                <td class="text-end">@row.Complete</td>
+                                <td class="text-end">@row.OnTrack</td>
+                                <td class="text-end">@row.Attention</td>
+                                <td class="text-end">@row.Overdue</td>
+                                <td class="text-end fw-semibold">@row.Total</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </details>
+        }
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header d-flex flex-wrap align-items-baseline gap-2">
+        <span class="fw-semibold">Projects over time</span>
+        <span class="text-muted small">
+            @Model.Timeline.Count project@(Model.Timeline.Count == 1 ? "" : "s") placed by first and last planned date
+            @if (Model.UndatedProjects > 0)
+            {
+                <text>&middot; @Model.UndatedProjects carry no date yet and are not shown</text>
+            }
+        </span>
+    </div>
+    <div class="card-body">
+        @if (Model.Timeline.Count == 0)
+        {
+            <div class="text-muted small">No project carries a date yet, so there is nothing to place on a timeline.</div>
+        }
+        else
+        {
+            <div class="tl-scroll">
+                <div class="tl-grid">
+                    <div class="tl-axis">
+                        <div></div>
+                        <div class="tl-axis-months">
+                            @foreach (var m in tlMonths)
+                            {
+                                <span class="tl-axis-month" style="left:@(tlPos(m).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture))%">@(m.Month == 1 ? m.ToString("MMM yyyy") : m.ToString("MMM"))</span>
+                            }
+                        </div>
+                    </div>
+                    @foreach (var row in Model.Timeline)
+                    {
+                        var left = tlPos(row.Start);
+                        var width = Math.Max(0.6, tlPos(row.End) - left);
+                        <div class="tl-row">
+                            <a class="tl-label" asp-controller="Projects" asp-action="Details" asp-route-id="@row.ProjectId" title="@row.ProjectName">
+                                <i class="tl-dot" style="background:var(--pillar-@(row.PillarIndex % 9))"></i>@row.ProjectName
+                            </a>
+                            <div class="tl-track">
+                                @foreach (var m in tlMonths)
+                                {
+                                    <span class="tl-tick" style="left:@(tlPos(m).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture))%"></span>
+                                }
+                                @if (tlToday >= tlAxisStart && tlToday < tlAxisEnd)
+                                {
+                                    <span class="tl-today" style="left:@(tlPos(tlToday).ToString("0.###", System.Globalization.CultureInfo.InvariantCulture))%" title="Today"></span>
+                                }
+                                <span class="tl-bar"
+                                      style="left:@(left.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture))%;width:@(width.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture))%;background:var(--pillar-@(row.PillarIndex % 9))"
+                                      title="@row.ProjectName (@row.PillarName) — @row.Start.ToString("dd MMM yyyy") to @row.End.ToString("dd MMM yyyy")@(row.FromOwnDates ? "" : " (from its actions)")"></span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+            <details class="mt-3">
+                <summary class="small text-muted">Show the dates as a table</summary>
+                <div class="table-responsive mt-2">
+                    <table class="table table-sm mb-0">
+                        <thead><tr><th>Project</th><th>Pillar</th><th>Starts</th><th>Ends</th><th>Dates from</th></tr></thead>
+                        <tbody>
+                        @foreach (var row in Model.Timeline)
+                        {
+                            <tr>
+                                <td><a asp-controller="Projects" asp-action="Details" asp-route-id="@row.ProjectId">@row.ProjectName</a></td>
+                                <td>@row.PillarName</td>
+                                <td>@row.Start.ToString("dd MMM yyyy")</td>
+                                <td>@row.End.ToString("dd MMM yyyy")</td>
+                                <td class="text-muted">@(row.FromOwnDates ? "the project" : "its actions")</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </details>
+        }
+    </div>
+</div>
+
 <div class="row g-3 mb-3">
     <div class="col-lg-5">
         <div class="card h-100 border-primary">
