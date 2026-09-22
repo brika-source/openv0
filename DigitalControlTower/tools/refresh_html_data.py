@@ -4,7 +4,7 @@ Swaps the data embedded in the single-file HTML edition for a newer export.
 
 Usage:
     python3 build_html_data.py <export.json> /tmp/dct-data.json
-    python3 refresh_html_data.py /tmp/dct-data.json ../standalone/DigitalControlTower.html
+    python3 refresh_html_data.py /tmp/dct-data.json ../standalone/digital_control_tower_2126_5.html
 
 The page itself is the source of truth for markup, styling and behaviour; only the
 block between the seed-data script tags is replaced.

@@ -5,7 +5,7 @@ Entity Framework Core. It replaces the browser-local JSON tracker with a shared 
 pillars → projects → work items → actions, a 14-week tracking grid, comments and an audit trail.
 
 **For the server owner: everything needed to install is in `deploy/INSTALL.md`.**
-**To look at the tower without installing anything: open `standalone/DigitalControlTower.html`.**
+**To look at the tower without installing anything: open `standalone/digital_control_tower_2126_5.html`.**
 
 **People are identified by their mail alias — the handle.** Walaa Brika is `brika.wm`,
 Hassan Ismail is `ismail.he`. Action owners, project managers, digital owners, comment
@@ -42,12 +42,13 @@ src/DigitalControlTower.Web/       ASP.NET Core MVC app (controllers, views, EF 
   Services/IEmailSender.cs         SMTP delivery for Outlook/Exchange
   Data/Migrations/                 EF Core Code-First migrations
   Data/seed/                       The JSON export this database was modelled on
-standalone/DigitalControlTower.html  The whole tower in one HTML file — open it, no server needed
+standalone/digital_control_tower_2126_5.html  The whole tower in one HTML file — open it, no server needed
 db/01_schema.sql                   Stand-alone schema script (idempotent, generated from the migration)
 db/02_seed_data.sql                Stand-alone seed script generated from the JSON export
 tools/generate_seed_sql.py         Regenerates 02_seed_data.sql from any newer JSON export
 tools/build_html_data.py           Builds the dataset the single-file edition carries
-tools/refresh_html_data.py         Swaps that dataset into standalone/DigitalControlTower.html
+tools/refresh_html_data.py         Swaps that dataset into standalone/digital_control_tower_2126_5.html
+tools/verify_seed_equivalence.py   Checks the SQL scripts and the importer load identical data
 ```
 
 ## Data model

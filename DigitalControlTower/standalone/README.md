@@ -30,6 +30,13 @@ hero, award banner, pillar cards, tabs, tables and both themes are the same file
 Either way it shows in Master Plan, Action Plan, Due Soon, Reports and the reminders.
 Deleting a meeting keeps its actions.
 
+## The data in it
+
+The board carries the **22 Sep 2026** export: 6 pillars, 41 projects, 98 master plan
+items, 297 actions and the 5 handles, with the priorities, quarters and change history
+the export holds. This is the same data the database scripts and the web app load, so the
+single file and the server show the same tower.
+
 ## Saving still works the same way
 
 The file rewrites itself on **Save data**, and the copy it writes carries the new code as
